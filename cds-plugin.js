@@ -231,7 +231,7 @@ module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
   getClient() {
     // not needed with cds >= 8.7.0
     if (this.client) return this.client
-    const AMQPClient = require('./common-utils/AMQPClient')
+    const AMQPClient = require('@sap/cds/libx/_runtime/messaging/common-utils/AMQPClient')
     this.client = new AMQPClient(this.getClientOptions())
     return this.client
   }
