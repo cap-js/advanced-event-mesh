@@ -1,0 +1,44 @@
+{
+  "name": "@cap-js/advanced-event-mesh",
+  "version": "0.0.1",
+  "description": "CDS plugin providing integration to SAP Advanced Event Mesh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cap-js/advanced-event-mesh.git"
+  },
+  "author": "SAP SE (https://www.sap.com)",
+  "homepage": "https://cap.cloud.sap/",
+  "license": "SEE LICENSE IN LICENSE",
+  "main": "cds-plugin.js",
+  "files": [
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "lint": "npx eslint .",
+    "test": "npx jest --silent"
+  },
+  "dependencies": {
+    "@sap/xb-msg-amqp-v100": "*",
+  },
+  "peerDependencies": {
+    "@sap/cds": ">=7"
+  },
+  "devDependencies": {
+    "@cap-js/advanced-event-mesh": "file:.",
+    "@sap-cloud-sdk/resilience": "^3.21.0"
+  },
+  "cds": {
+    "requires": {
+      "kinds": {
+        "advanced-event-mesh": {
+          "impl": "@cap-js/advanced-event-mesh",
+          "format": "cloudevents",
+          "outbox": true,
+          "vcap": {
+            "name": "advanced-event-mesh"
+          }
+        }
+      }
+    }
+  }
+}
