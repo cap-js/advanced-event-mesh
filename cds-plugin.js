@@ -92,7 +92,7 @@ class AEMManagement {
   async deleteQueue(queueName = this.queueName) {
     this.LOG._info && this.LOG.info('Delete queue', { queue: queueName })
     try {
-      await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues`, {
+      await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues/${encodeURIComponent(queueName)}`, {
         method: 'DELETE',
         headers: {
           accept: 'application/json',
