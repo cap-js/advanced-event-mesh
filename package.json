@@ -32,8 +32,9 @@
       "kinds": {
         "advanced-event-mesh": {
           "impl": "@cap-js/advanced-event-mesh",
-          "format": "cloudevents",
           "outbox": true,
+          "subscribePrefix": "",
+          "publishPrefix": "",
           "vcap": {
             "name": "advanced-event-mesh"
           }
