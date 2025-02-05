@@ -18,7 +18,8 @@
     "test": "npx jest --silent"
   },
   "dependencies": {
-    "@sap/xb-msg-amqp-v100": "*"
+    "@sap/xb-msg-amqp-v100": "*",
+    "solclientjs": "^10.17.1"
   },
   "peerDependencies": {
     "@sap/cds": ">=7"

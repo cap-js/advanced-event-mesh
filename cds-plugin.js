@@ -1,5 +1,7 @@
 const EnterpriseMessagingShared = require('@sap/cds/libx/_runtime/messaging/enterprise-messaging-shared.js')
 
+const solace = require('solclientjs')
+
 const requiredParams =
   'No proper credentials found for SAP Advanced Event Mesh.\n\nHint: You need to create a user-provided service (default name `advanced-event-mesh`) with parameters `{ uri, name, password, management: { vpn, name, password, uri } }`'
 
@@ -226,32 +228,69 @@ class AEMManagement {
   }
 }
 
+class Client {
+  constructor(opts) {
+    this.opts = opts
+  }
+
+  async connect() {
+    //this.client = new ClientAmqp(this.optionsAMQP)
+    //this.sender = sender(this.client, this.service.optionsApp)
+    //this.stream = this.sender.attach('')
+    //await connect(this.client, this.service.LOG, this.keepAlive)
+    const session = solace.SolclientFactory.createSession({
+      url: this.options.uri,
+      vpnName: this.options.vpn,
+      userName: this.options.user,
+      password: this.options.password
+    });
+    try {
+      session.connect();
+    } catch (error) {
+      console.log(error);
+    } 
+  }
+
+  async disconnect() {
+    //if (this.client) {
+    //  await disconnect(this.client)
+    //  delete this.client
+    //}
+  }
+
+  async emit(msg) {
+    //if (!this.client) await this.connect()
+    //// REVISIT: Is this a robust way to find out if the connection is working?
+    //if (msg._fromOutbox && !this.sender.opened()) throw new Error('AMQP: Sender is not open')
+    //await emit(msg, this.stream, this.prefix.topic, this.service.LOG)
+    //if (!this.keepAlive) return this.disconnect()
+  }
+
+  listen(cb) {
+    //return addDataListener(this.client, this.service.queueName, this.prefix.queue, cb)
+  }
+}
+
 module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
 
   getClient() {
+    // AMQP -----------------
     // not needed with cds >= 8.7.0
-    if (this.client) return this.client
-    const AMQPClient = require('@sap/cds/libx/_runtime/messaging/common-utils/AMQPClient')
-    this.client = new AMQPClient(this.getClientOptions())
+    //if (this.client) return this.client
+    //const AMQPClient = require('@sap/cds/libx/_runtime/messaging/common-utils/AMQPClient')
+    //this.client = new AMQPClient(this.getClientOptions())
+    //return this.client
+    // AMQP -----------------
+
+    this.client = new Client(this.getClientOptions())
     return this.client
   }
 
   getClientOptions() {
     const credentials = this.options.credentials
+    console.log(this.options)
     if (!credentials) throw new Error(requiredParams)
-    const uri = credentials.uri
-    return {
-    optionsAMQP: {
-      uri: [uri],
-      sasl: {
-        mechanism: 'PLAIN',
-        user: credentials.user,
-        password: credentials.password
-      }
-    },
-    prefix: { topic: 'topic://', queue: '' },
-    service: this
-  } 
+    return credentials
   }
 
   getManagement() {
