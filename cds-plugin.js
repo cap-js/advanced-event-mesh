@@ -267,17 +267,43 @@ class Client {
   async emit(msg) {
     if (!this.session) await this.connect()
 
+    const { data, event: topic, headers = {} } = msg
+    const _message = { ...headers, data }
+
+    const contentType = ['id', 'source', 'specversion', 'type'].every(el => el in headers)
+        ? 'application/cloudevents+json'
+        : 'application/json'
+
+
     const message = solace.SolclientFactory.createMessage()
-    message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event));
-    message.setBinaryAttachment(messageText);
+    message.setDestination(solace.SolclientFactory.createTopicDestination(topic))
+    message.setBinaryAttachment(JSON.stringify(_message))
+    message.setHttpContentType(contentType)
     message.setDeliveryMode(solace.MessageDeliveryModeType.DIRECT);
+    this.session.send(message); // sync???!
+
+
     //// REVISIT: Is this a robust way to find out if the connection is working?
     //if (msg._fromOutbox && !this.sender.opened()) throw new Error('AMQP: Sender is not open')
     //await emit(msg, this.stream, this.prefix.topic, this.service.LOG)
     //if (!this.keepAlive) return this.disconnect()
   }
 
-  listen(cb) {
+  async listen(cb) {
+    if (!this.session) await this.connect()
+    const consumer = this.session.createMessageConsumer({
+      // solace.MessageConsumerProperties
+      queueDescriptor: { name: this.options.queue, type: solace.QueueType.QUEUE },
+      acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT,
+    });
+    consumer.connect()
+    this.session.on(solace.SessionEventCode.MESSAGE, async function(message) {
+      console.log('>>>>>> tech message received', message)
+      const payload = message.getBinaryAttachment()
+      const topic = message.getDestination().getName()
+      await cb(topic, payload.toString(), null, { done: message.acknowledge, failed: () => message.settle(solace.MessageOutcome.REJECTED) })
+    })
+
     //return addDataListener(this.client, this.service.queueName, this.prefix.queue, cb)
   }
 }
@@ -299,9 +325,8 @@ module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
 
   getClientOptions() {
     const credentials = this.options.credentials
-    console.log(this.options)
     if (!credentials) throw new Error(requiredParams)
-    return credentials
+    return Object.assign({ queue: this.queueName }, credentials)
   }
 
   getManagement() {
@@ -321,7 +346,7 @@ module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
 
   optionsManagement() {
     const management = this.options.credentials?.management
-    if (!management.uri || !management.user || !management.password || !management.vpn) {
+    if (!management.uri || !management.user || !management.password) {
       throw new Error(requiredParams)
     }
     // TODO: real management APIs
