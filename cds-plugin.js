@@ -3,7 +3,7 @@ const EnterpriseMessagingShared = require('@sap/cds/libx/_runtime/messaging/ente
 const solace = require('solclientjs')
 
 const requiredParams =
-  'No proper credentials found for SAP Advanced Event Mesh.\n\nHint: You need to create a user-provided service (default name `advanced-event-mesh`) with parameters `{ uri, name, password, management: { vpn, name, password, uri } }`'
+  'No proper credentials found for SAP Advanced Event Mesh.\n\nHint: You need to create a user-provided service (default name `advanced-event-mesh`)'
 
 class AEMManagement {
   constructor({ optionsManagement, queueConfig, queueName, subscribedTopics, LOG }) {
@@ -317,7 +317,7 @@ module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
     const creds = {
       uri: management.uri,
       token: Buffer.from(management.user + ':' + management.password).toString('base64'),
-      vpn: management.vpn,
+      vpn: this.options.credentials.vpn,
       owner: this.options.credentials.user
     }
     return creds
