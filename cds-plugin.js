@@ -230,7 +230,7 @@ class AEMManagement {
 
 class Client {
   constructor(opts) {
-    this.opts = opts
+    this.options = opts
   }
 
   async connect() {
@@ -238,28 +238,39 @@ class Client {
     //this.sender = sender(this.client, this.service.optionsApp)
     //this.stream = this.sender.attach('')
     //await connect(this.client, this.service.LOG, this.keepAlive)
-    const session = solace.SolclientFactory.createSession({
-      url: this.options.uri,
-      vpnName: this.options.vpn,
-      userName: this.options.user,
-      password: this.options.password
-    });
-    try {
-      session.connect();
-    } catch (error) {
-      console.log(error);
-    } 
+
+    return new Promise((resolve, reject) => {
+      const factoryProps = new solace.SolclientFactoryProperties();
+      factoryProps.profile = solace.SolclientFactoryProfiles.version10;
+      solace.SolclientFactory.init(factoryProps);
+      this.session = solace.SolclientFactory.createSession({
+        url: this.options.uri,
+        vpnName: this.options.vpn,
+        userName: this.options.user,
+        password: this.options.password,
+        connectRetries: -1,
+      });
+      try {
+        this.session.connect();
+      } catch (error) {
+        reject(error)
+      } 
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => resolve())
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => reject(e))
+    })
   }
 
   async disconnect() {
-    //if (this.client) {
-    //  await disconnect(this.client)
-    //  delete this.client
-    //}
+    if (this.session) this.session.disconnect()
   }
 
   async emit(msg) {
-    //if (!this.client) await this.connect()
+    if (!this.session) await this.connect()
+
+    const message = solace.SolclientFactory.createMessage()
+    message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event));
+    message.setBinaryAttachment(messageText);
+    message.setDeliveryMode(solace.MessageDeliveryModeType.DIRECT);
     //// REVISIT: Is this a robust way to find out if the connection is working?
     //if (msg._fromOutbox && !this.sender.opened()) throw new Error('AMQP: Sender is not open')
     //await emit(msg, this.stream, this.prefix.topic, this.service.LOG)
