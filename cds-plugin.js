@@ -238,6 +238,26 @@ class Client {
     //this.sender = sender(this.client, this.service.optionsApp)
     //this.stream = this.sender.attach('')
     //await connect(this.client, this.service.LOG, this.keepAlive)
+    
+    const clientId = this.options.clientid
+    const clientSecret = this.options.clientsecret
+    const tokenEndpoint = this.options.tokenendpoint
+    console.log({ clientId, clientSecret, tokenEndpoint })
+
+    const resp = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret // scope?
+      })
+    }).then(x => x.json());
+
+    const token = resp.access_token
+    console.log(token)
 
     return new Promise((resolve, reject) => {
       const factoryProps = new solace.SolclientFactoryProperties();
@@ -247,6 +267,8 @@ class Client {
       this.session = solace.SolclientFactory.createSession({
         url: this.options.uri,
         vpnName: this.options.vpn,
+        //authenticationScheme: solace.AuthenticationScheme.OAUTH2,
+  //      accessToken:          token,
         userName: this.options.user,
         password: this.options.password,
         connectRetries: -1,
@@ -322,8 +344,8 @@ class Client {
 
       const payload = message.getBinaryAttachment()
       const topic = message.getDestination().getName()
-         // await cb(topic, payload.toString(), null, { done: () => message.acknowledge(), failed: (e) => message.settle(solace.MessageOutcome.FAILED) })
-         await cb(topic, payload.toString(), null, { done: () => message.acknowledge(), failed: (e) => console.error(e) })
+         await cb(topic, payload.toString(), null, { done: () => message.acknowledge(), failed: (e) => message.settle(solace.MessageOutcome.FAILED) })
+         // await cb(topic, payload.toString(), null, { done: () => message.acknowledge(), failed: (e) => console.error(e) })
     });
 
     this.messageSubscriber.connect();
