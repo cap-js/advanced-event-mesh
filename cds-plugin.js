@@ -243,6 +243,7 @@ class Client {
       const factoryProps = new solace.SolclientFactoryProperties();
       factoryProps.profile = solace.SolclientFactoryProfiles.version10;
       solace.SolclientFactory.init(factoryProps);
+      solace.SolclientFactory.setLogLevel(solace.LogLevel.DEBUG)
       this.session = solace.SolclientFactory.createSession({
         url: this.options.uri,
         vpnName: this.options.vpn,
@@ -279,32 +280,53 @@ class Client {
     message.setDestination(solace.SolclientFactory.createTopicDestination(topic))
     message.setBinaryAttachment(JSON.stringify(_message))
     message.setHttpContentType(contentType)
-    message.setDeliveryMode(solace.MessageDeliveryModeType.DIRECT);
-    this.session.send(message); // sync???!
+    message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT);
 
+    console.log('delivery mode in number:', solace.MessageDeliveryModeType.PERSISTENT)
 
-    //// REVISIT: Is this a robust way to find out if the connection is working?
-    //if (msg._fromOutbox && !this.sender.opened()) throw new Error('AMQP: Sender is not open')
-    //await emit(msg, this.stream, this.prefix.topic, this.service.LOG)
-    //if (!this.keepAlive) return this.disconnect()
+    console.log('Message delivery mode:', message.getDeliveryMode());
+
+    this.session.send(message) // SYNC?!
   }
 
   async listen(cb) {
+
     if (!this.session) await this.connect()
-    const consumer = this.session.createMessageConsumer({
+    console.log('listening to queue', this.options.queue)
+    this.messageSubscriber = this.session.createMessageConsumer({
       // solace.MessageConsumerProperties
       queueDescriptor: { name: this.options.queue, type: solace.QueueType.QUEUE },
-      acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT,
+      acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT, // Enabling Client ack
+      //createIfMissing: true // Create queue if not exists
     });
-    consumer.connect()
-    this.session.on(solace.SessionEventCode.MESSAGE, async function(message) {
-      console.log('>>>>>> tech message received', message)
+    console.log('listening to queue done', this.options.queue)
+
+    this.messageSubscriber.on(solace.MessageConsumerEventName.UP, function () {
+      console.log('=== Ready to receive messages. ===');
+    });
+    this.messageSubscriber.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR,  () => {
+      console.log('=== Error: the message consumer could not bind to queue "' + this.options.queue +
+        '" ===\n   Ensure this queue exists on the message broker');
+    });
+    this.messageSubscriber.on(solace.MessageConsumerEventName.DOWN, function () {
+      console.log('=== An error happened, the message consumer is down ===');
+    });
+
+
+    this.messageSubscriber.on(solace.MessageConsumerEventName.MESSAGE, async function (message) {
+      console.log('>>>>>> tech message received')
+      console.log('Message Type:', message.getType ? message.getType() : 'Unknown');
+      console.log('Delivery Mode:', message.getDeliveryMode ? message.getDeliveryMode() : 'Unknown');
+
+
+
       const payload = message.getBinaryAttachment()
       const topic = message.getDestination().getName()
-      await cb(topic, payload.toString(), null, { done: message.acknowledge, failed: () => message.settle(solace.MessageOutcome.REJECTED) })
-    })
+         // await cb(topic, payload.toString(), null, { done: () => message.acknowledge(), failed: (e) => message.settle(solace.MessageOutcome.FAILED) })
+         await cb(topic, payload.toString(), null, { done: () => message.acknowledge(), failed: (e) => console.error(e) })
+    });
 
-    //return addDataListener(this.client, this.service.queueName, this.prefix.queue, cb)
+    this.messageSubscriber.connect();
   }
 }
 
