@@ -267,10 +267,10 @@ class Client {
       this.session = solace.SolclientFactory.createSession({
         url: this.options.uri,
         vpnName: this.options.vpn,
-        //authenticationScheme: solace.AuthenticationScheme.OAUTH2,
-  //      accessToken:          token,
-        userName: this.options.user,
-        password: this.options.password,
+        authenticationScheme: solace.AuthenticationScheme.OAUTH2,
+        accessToken:          token,
+        // userName: this.options.user,
+        // password: this.options.password,
         connectRetries: -1,
       });
       try {
@@ -278,8 +278,8 @@ class Client {
       } catch (error) {
         reject(error)
       } 
-      this.session.on(solace.SessionEventCode.UP_NOTICE, () => resolve())
-      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => reject(e))
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => { console.log('success');resolve() })
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => { console.log(failed, e);reject(e) })
     })
   }
 
@@ -355,14 +355,6 @@ class Client {
 module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
 
   getClient() {
-    // AMQP -----------------
-    // not needed with cds >= 8.7.0
-    //if (this.client) return this.client
-    //const AMQPClient = require('@sap/cds/libx/_runtime/messaging/common-utils/AMQPClient')
-    //this.client = new AMQPClient(this.getClientOptions())
-    //return this.client
-    // AMQP -----------------
-
     this.client = new Client(this.getClientOptions())
     return this.client
   }
