@@ -353,47 +353,153 @@ class Client {
   }
 }
 
-module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
+//module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
+//
+//  getClient() {
+//    this.client = new Client(this.getClientOptions())
+//    return this.client
+//  }
+//
+//  getClientOptions() {
+//    const credentials = this.options.credentials
+//    if (!credentials) throw new Error(requiredParams)
+//    return Object.assign({ queue: this.queueName }, credentials)
+//  }
+//
+//  getManagement() {
+//    if (this.management) return this.management
+//    const optsManagement = this.optionsManagement()
+//    const queueConfig = this.queueConfig
+//    const queueName = this.queueName
+//    this.management = new AEMManagement({
+//      client: this.client,
+//      optionsManagement: optsManagement,
+//      queueConfig,
+//      queueName,
+//      subscribedTopics: this.subscribedTopics,
+//      LOG: this.LOG
+//    })
+//    return this.management
+//  }
+//
+//  optionsManagement() {
+//    const management = this.options.credentials?.management
+//    if (!management.uri || !management.user || !management.password) {
+//      throw new Error(requiredParams)
+//    }
+//    // TODO: real management APIs
+//    const creds = {
+//      uri: management.uri,
+//      token: Buffer.from(management.user + ':' + management.password).toString('base64'),
+//      vpn: this.options.credentials.vpn,
+//      owner: this.options.credentials.user
+//    }
+//    return creds
+//  }
+//}
 
-  getClient() {
-    this.client = new Client(this.getClientOptions())
-    return this.client
-  }
+module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
-  getClientOptions() {
-    const credentials = this.options.credentials
-    if (!credentials) throw new Error(requiredParams)
-    return Object.assign({ queue: this.queueName }, credentials)
-  }
+  async init() {
+    await super.init()
 
-  getManagement() {
-    if (this.management) return this.management
-    const optsManagement = this.optionsManagement()
-    const queueConfig = this.queueConfig
-    const queueName = this.queueName
-    this.management = new AEMManagement({
-      client: this.client,
-      optionsManagement: optsManagement,
-      queueConfig,
-      queueName,
-      subscribedTopics: this.subscribedTopics,
-      LOG: this.LOG
+    cds.once('listening', () => {
+      this.startListening()
     })
-    return this.management
+
+
+    const clientId = this.options.credentials.clientid
+    const clientSecret = this.options.credentials.clientsecret
+    const tokenEndpoint = this.options.credentials.tokenendpoint
+    const vpn = this.options.credentials.vpn
+    const uri = this.options.credentials.uri
+    // TODO: Error handling
+    console.log({ clientId, clientSecret, tokenEndpoint })
+
+
+    if (this.options.queue) {
+      const queueConfig = { ...this.options.queue }
+      delete queueConfig.name
+      if (Object.keys(queueConfig).length) this.queueConfig = queueConfig
+    }
+
+    const optionsApp = require('@sap/cds/libx/_runtime/common/utils/vcap.js') // TODO: streamline
+    const appId = () => {
+      const appName = optionsApp.appName || 'CAP'
+      const appID = optionsApp.appID || '00000000'
+      const shrunkAppID = appID.substring(0, 4)
+      return `${appName}/${shrunkAppID}`
+    }
+
+    const prepareQueueName = (queueName) => {
+      return queueName.replace(/\$appId/g, appId())
+    }
+    this.queueName = prepareQueueName(this.options.queue?.name || '$appId')
+
+
+    const resp = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret // scope?
+      })
+    }).then(x => x.json());
+
+    const token = resp.access_token
+    console.log(token)
+
+    const factoryProps = new solace.SolclientFactoryProperties();
+    factoryProps.profile = solace.SolclientFactoryProfiles.version10;
+    solace.SolclientFactory.init(factoryProps);
+    solace.SolclientFactory.setLogLevel(solace.LogLevel.DEBUG)
+    this.session = solace.SolclientFactory.createSession({
+      url: uri,
+      vpnName: vpn,
+      authenticationScheme: solace.AuthenticationScheme.OAUTH2,
+      accessToken:          token,
+      // userName: this.options.user,
+      // password: this.options.password,
+      connectRetries: -1,
+    });
+    return new Promise((resolve, reject) => {
+      try {
+        this.session.connect();
+      } catch (error) {
+        reject(error)
+      } 
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => { resolve() })
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => { reject(e) })
+    })
   }
 
-  optionsManagement() {
-    const management = this.options.credentials?.management
-    if (!management.uri || !management.user || !management.password) {
-      throw new Error(requiredParams)
+
+  async startListening() {
+    if (!this._listenToAll.value && !this.subscribedTopics.size) return
+    //const subscribedTopics = [...this.subscribedTopics]
+
+    this.messageConsumer = this.session.createMessageConsumer({
+      // solace.MessageConsumerProperties
+      queueDescriptor: { name: this.options.queueName, type: solace.QueueType.QUEUE },
+      acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT, // Enabling Client ack
+      createIfMissing: true // Create queue if not exists
+    });
+
+    for (const topic of [...this.subscribedTopics].map(kv => kv[0])) {
+      console.log(topic)
+      // TODO: doesn't work
+      this.messageConsumer.addSubscription(
+        solace.SolclientFactory.createTopicDestination(topic),
+        topic, // correlation key as topic name
+        10000 // 10 seconds timeout for this operation
+      );
     }
-    // TODO: real management APIs
-    const creds = {
-      uri: management.uri,
-      token: Buffer.from(management.user + ':' + management.password).toString('base64'),
-      vpn: this.options.credentials.vpn,
-      owner: this.options.credentials.user
-    }
-    return creds
+    //this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, function (sessionEvent) {
+    //  console.log('Cannot subscribe to topic ' + sessionEvent.reason);
+    //});
   }
+
 }
