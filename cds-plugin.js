@@ -319,7 +319,7 @@ class Client {
       // solace.MessageConsumerProperties
       queueDescriptor: { name: this.options.queue, type: solace.QueueType.QUEUE },
       acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT, // Enabling Client ack
-      //createIfMissing: true // Create queue if not exists
+      createIfMissing: true // Create queue if not exists
     });
     console.log('listening to queue done', this.options.queue)
 
