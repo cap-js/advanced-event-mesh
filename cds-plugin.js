@@ -6,7 +6,8 @@ const requiredParams =
   'No proper credentials found for SAP Advanced Event Mesh.\n\nHint: You need to create a user-provided service (default name `advanced-event-mesh`)'
 
 class AEMManagement {
-  constructor({ optionsManagement, queueConfig, queueName, subscribedTopics, LOG }) {
+  constructor({ client, optionsManagement, queueConfig, queueName, subscribedTopics, LOG }) {
+    this.client = client
     this.options = optionsManagement
     this.queueConfig = queueConfig
     this.queueName = queueName
@@ -60,35 +61,35 @@ class AEMManagement {
 
   async createQueue(queueName = this.queueName) {
     this.LOG._info && this.LOG.info('Create queue', { queue: queueName })
-    try {
-      const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
-      queueConfig.queueName = queueName
-      queueConfig.owner = this.options.owner
-      queueConfig.ingressEnabled = true
-      queueConfig.egressEnabled = true
-      if (queueConfig.deadMsgQueue)
-        queueConfig.deadMsgQueue = queueConfig.deadMsgQueue.replace(/\$namespace/g, this.namespace)
-
-      const res = await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues`, {
-        method: 'POST',
-        body: JSON.stringify(queueConfig),
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          encoding: 'utf-8',
-          authorization: 'Basic ' + this.options.token
-        }
-      }).then(r => r.json())
-      if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
-      if (res.statusCode === 201) return true
-    } catch (e) {
-      const error = new Error(`Queue "${queueName}" could not be created`)
-      error.code = 'CREATE_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: queueName }
-      error.reason = e
-      this.LOG.error(error)
-      throw error
-    }
+    //try {
+    //  const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
+    //  queueConfig.queueName = queueName
+    //  queueConfig.owner = this.options.owner
+    //  queueConfig.ingressEnabled = true
+    //  queueConfig.egressEnabled = true
+    //  if (queueConfig.deadMsgQueue)
+    //    queueConfig.deadMsgQueue = queueConfig.deadMsgQueue.replace(/\$namespace/g, this.namespace)
+    //
+    //  const res = await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues`, {
+    //    method: 'POST',
+    //    body: JSON.stringify(queueConfig),
+    //    headers: {
+    //      accept: 'application/json',
+    //      'content-type': 'application/json',
+    //      encoding: 'utf-8',
+    //      authorization: 'Basic ' + this.options.token
+    //    }
+    //  }).then(r => r.json())
+    //  if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
+    //  if (res.statusCode === 201) return true
+    //} catch (e) {
+    //  const error = new Error(`Queue "${queueName}" could not be created`)
+    //  error.code = 'CREATE_QUEUE_FAILED'
+    //  error.target = { kind: 'QUEUE', queue: queueName }
+    //  error.reason = e
+    //  this.LOG.error(error)
+    //  throw error
+    //}
   }
 
   async deleteQueue(queueName = this.queueName) {
@@ -259,20 +260,20 @@ class Client {
     const token = resp.access_token
     console.log(token)
 
+    const factoryProps = new solace.SolclientFactoryProperties();
+    factoryProps.profile = solace.SolclientFactoryProfiles.version10;
+    solace.SolclientFactory.init(factoryProps);
+    solace.SolclientFactory.setLogLevel(solace.LogLevel.DEBUG)
+    this.session = solace.SolclientFactory.createSession({
+      url: this.options.uri,
+      vpnName: this.options.vpn,
+      authenticationScheme: solace.AuthenticationScheme.OAUTH2,
+      accessToken:          token,
+      // userName: this.options.user,
+      // password: this.options.password,
+      connectRetries: -1,
+    });
     return new Promise((resolve, reject) => {
-      const factoryProps = new solace.SolclientFactoryProperties();
-      factoryProps.profile = solace.SolclientFactoryProfiles.version10;
-      solace.SolclientFactory.init(factoryProps);
-      solace.SolclientFactory.setLogLevel(solace.LogLevel.DEBUG)
-      this.session = solace.SolclientFactory.createSession({
-        url: this.options.uri,
-        vpnName: this.options.vpn,
-        authenticationScheme: solace.AuthenticationScheme.OAUTH2,
-        accessToken:          token,
-        // userName: this.options.user,
-        // password: this.options.password,
-        connectRetries: -1,
-      });
       try {
         this.session.connect();
       } catch (error) {
@@ -371,6 +372,7 @@ module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
     const queueConfig = this.queueConfig
     const queueName = this.queueName
     this.management = new AEMManagement({
+      client: this.client,
       optionsManagement: optsManagement,
       queueConfig,
       queueName,
