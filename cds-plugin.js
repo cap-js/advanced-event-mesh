@@ -64,7 +64,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       return queueName.replace(/\$appId/g, appId())
     }
 
-    this.options.queue.name = prepareQueueName(this.options.queue?.name || '$appId')
+    this.options.queue.queueDescriptor.name = prepareQueueName(
+      this.options.queue.name || this.options.queue.queueDescriptor.name || '$appId'
+    )
+    delete this.options.queue.name
 
     const resp = await fetch(tokenEndpoint, {
       method: 'POST',
@@ -164,23 +167,22 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   }
 
   async _createQueue() {
-    if (this.LOG._info) this.LOG.info('Creating queue', this.options.queue.name)
+    if (this.LOG._info) this.LOG.info('Creating queue', this.options.queue.queueDescriptor.name)
     return new Promise((resolve, reject) => {
-      console.log(this.options.queue)
       this.messageConsumer = this.session.createMessageConsumer(this.options.queue)
 
       this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
-        if (this.LOG._info) this.LOG.info('Queue created', this.options.queue.name)
+        if (this.LOG._info) this.LOG.info('Queue created', this.options.queue.queueDescriptor.name)
         resolve()
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, _event => {
-        this.LOG.error('Queue down', this.options.queue.name)
+        this.LOG.error('Queue down', this.options.queue.queueDescriptor.name)
         reject(new Error('Message Consumer failed to start.'))
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, _event => {
-        this.LOG.error('Could not connect to queue', this.options.queue.name)
+        this.LOG.error('Could not connect to queue', this.options.queue.queueDescriptor.name)
         reject(new Error('Message Consumer connection failed.'))
       })
       this.messageConsumer.connect()
