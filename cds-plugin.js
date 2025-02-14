@@ -5,6 +5,36 @@ const solace = require('solclientjs')
 const requiredParams =
   'No proper credentials found for SAP Advanced Event Mesh.\n\nHint: You need to create a user-provided service (default name `advanced-event-mesh`)'
 
+
+const _JSONorString = string => {
+  try {
+    return JSON.parse(string)
+  } catch {
+    return string
+  }
+}
+
+// Some messaging systems don't adhere to the standard that the payload has a `data` property.
+// For these cases, we interpret the whole payload as `data`.
+const normalizeIncomingMessage = message => {
+  const _payload = typeof message === 'object' ? message : _JSONorString(message)
+  let data, headers
+  if (typeof _payload === 'object' && 'data' in _payload) {
+    data = _payload.data
+    headers = { ..._payload }
+    delete headers.data
+  } else {
+    data = _payload
+    headers = {}
+  }
+
+  return {
+    data,
+    headers,
+    inbound: true
+  }
+}
+
 class AEMManagement {
   constructor({ client, optionsManagement, queueConfig, queueName, subscribedTopics, LOG }) {
     this.client = client
@@ -471,35 +501,60 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       } catch (error) {
         reject(error)
       } 
-      this.session.on(solace.SessionEventCode.UP_NOTICE, () => { resolve() })
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => { console.log('solace connected');resolve() })
       this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => { reject(e) })
     })
   }
 
+  async handle(msg) {
+    if (msg.inbound) return super.handle(msg)
+    const _msg = this.message4(msg)
+    this.LOG._info && this.LOG.info('Emit', { topic: _msg.event })
+    // await this.client.publish(_msg.event, JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
+    const message = solace.SolclientFactory.createMessage();
+    message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event));
+    message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }));
+    message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT);
+    this.session.send(message);
+  }
 
   async startListening() {
     if (!this._listenToAll.value && !this.subscribedTopics.size) return
     //const subscribedTopics = [...this.subscribedTopics]
 
+    console.log('creating queue', this.queueName)
     this.messageConsumer = this.session.createMessageConsumer({
       // solace.MessageConsumerProperties
-      queueDescriptor: { name: this.options.queueName, type: solace.QueueType.QUEUE },
+      queueDescriptor: { name: this.queueName, type: solace.QueueType.QUEUE },
       acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT, // Enabling Client ack
       createIfMissing: true // Create queue if not exists
     });
 
     for (const topic of [...this.subscribedTopics].map(kv => kv[0])) {
-      console.log(topic)
       // TODO: doesn't work
-      this.messageConsumer.addSubscription(
-        solace.SolclientFactory.createTopicDestination(topic),
-        topic, // correlation key as topic name
-        10000 // 10 seconds timeout for this operation
+      console.log('adding consumer for', topic)
+      // todo: subscribe on consumer
+      this.session.subscribe(
+        solace.SolclientFactory.createTopic(topic),
+        true,
+        "tutorial/topic",
+        10000
       );
     }
-    //this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, function (sessionEvent) {
-    //  console.log('Cannot subscribe to topic ' + sessionEvent.reason);
-    //});
+
+    this.session.on(solace.SessionEventCode.MESSAGE, async message => {
+      console.log('received msg')
+      const msg = normalizeIncomingMessage(message.getBinaryAttachment())
+      msg.event = message.getDestination().getName()
+      try {
+        await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+      } catch (e) {
+        e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
+        this.LOG.error(e)
+      }
+    });
+
+    this.messageConsumer.connect();
   }
 
 }
