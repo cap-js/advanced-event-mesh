@@ -1,5 +1,5 @@
 const solace = require('solclientjs')
-const EventEmitter = require('node:events');
+const EventEmitter = require('node:events')
 
 const _JSONorString = string => {
   try {
@@ -31,7 +31,6 @@ const normalizeIncomingMessage = message => {
 }
 
 module.exports = class AdvancedEventMesh extends cds.MessagingService {
-
   async init() {
     await super.init()
 
@@ -50,7 +49,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     // TODO: Error handling
     console.log({ clientId, clientSecret, tokenEndpoint })
 
-
     if (this.options.queue) {
       const queueConfig = { ...this.options.queue }
       delete queueConfig.name
@@ -65,11 +63,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       return `${appName}/${shrunkAppID}`
     }
 
-    const prepareQueueName = (queueName) => {
+    const prepareQueueName = queueName => {
       return queueName.replace(/\$appId/g, appId())
     }
     this.queueName = prepareQueueName(this.options.queue?.name || '$appId')
-
 
     const resp = await fetch(tokenEndpoint, {
       method: 'POST',
@@ -94,31 +91,35 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       url: uri,
       vpnName: vpn,
       authenticationScheme: solace.AuthenticationScheme.OAUTH2,
-      accessToken:          token,
+      accessToken: token,
       publisherProperties: {
-        acknowledgeMode: solace.MessagePublisherAcknowledgeMode.PER_MESSAGE,
+        acknowledgeMode: solace.MessagePublisherAcknowledgeMode.PER_MESSAGE
       },
       // userName: this.options.user,
       // password: this.options.password,
-      connectRetries: -1,
+      connectRetries: -1
     })
 
-    this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, (sessionEvent) => {
+    this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
       console.timeEnd('send')
       this._eventAck.emit(sessionEvent.correlationKey)
-    });
-    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, (sessionEvent) => {
+    })
+    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, sessionEvent => {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
-    });
+    })
 
     return new Promise((resolve, reject) => {
       try {
         this.session.connect()
       } catch (error) {
         reject(error)
-      } 
-      this.session.on(solace.SessionEventCode.UP_NOTICE, () => { resolve() })
-      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => { reject(e) })
+      }
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
+        resolve()
+      })
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => {
+        reject(e)
+      })
     })
   }
 
@@ -126,24 +127,19 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     if (msg.inbound) return super.handle(msg)
     const _msg = this.message4(msg)
     this.LOG._info && this.LOG.info('Emit', { topic: _msg.event })
-    // await this.client.publish(_msg.event, JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
     const message = solace.SolclientFactory.createMessage()
     message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event))
     message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
     message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT)
-    //const correlationKey = {
-    //  name: "MESSAGE_CORRELATIONKEY",
-    //  id: cds.utils.uuid(),
-    //};
     const correlationKey = cds.utils.uuid()
-    message.setCorrelationKey(correlationKey);
+    message.setCorrelationKey(correlationKey)
     return new Promise((resolve, reject) => {
       this._eventAck.once(correlationKey, () => {
-        this._eventRej.removeAllListeners(correlationKey);
+        this._eventRej.removeAllListeners(correlationKey)
         resolve()
       })
       this._eventRej.once(correlationKey, _sessionEvent => {
-        this._eventAck.removeAllListeners(correlationKey);
+        this._eventAck.removeAllListeners(correlationKey)
         reject()
       })
       console.time('send')
@@ -157,8 +153,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await this._createQueue()
     await this._subscribeTopics()
 
-
-    this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async (message) => {
+    this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       console.log('received msg')
       const msg = normalizeIncomingMessage(message.getBinaryAttachment())
       msg.event = message.getDestination().getName()
@@ -185,16 +180,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
-      if (this.LOG._info) this.LOG.info('Queue created', this.queueName)
+        if (this.LOG._info) this.LOG.info('Queue created', this.queueName)
         resolve()
       })
 
-      this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, (_event) => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, _event => {
         this.LOG.error('Queue down', this.queueName)
         reject(new Error('Message Consumer failed to start.'))
       })
 
-      this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, (_event) => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, _event => {
         this.LOG.error('Could not connect to queue', this.queueName)
         reject(new Error('Message Consumer connection failed.'))
       })
@@ -206,11 +201,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const topics = [...this.subscribedTopics].map(kv => kv[0])
     return new Promise((resolve, reject) => {
       const subscribed = []
-      this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_OK, (sessionEvent) => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_OK, sessionEvent => {
         subscribed.push(sessionEvent.correlationKey)
         if (subscribed.length === topics.length) resolve()
       })
-      this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, (sessionEvent) => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, sessionEvent => {
         console.log('oh oh', sessionEvent.reason, 'for', sessionEvent.correlationKey)
         console.log(sessionEvent)
         reject(sessionEvent.reason)
@@ -224,5 +219,4 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       }
     })
   }
-
 }
