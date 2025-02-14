@@ -47,7 +47,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const vpn = this.options.credentials.vpn
     const uri = this.options.credentials.uri
     // TODO: Error handling
-    if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri) throw new Error('Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri }.')
+    if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri)
+      throw new Error(
+        'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri }.'
+      )
 
     if (this.options.queue) {
       const queueConfig = { ...this.options.queue }
@@ -86,14 +89,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
     solace.SolclientFactory.init(factoryProps)
     solace.SolclientFactory.setLogLevel(solace.LogLevel.ERROR)
-    this.session = solace.SolclientFactory.createSession({
+    const opts = {
       url: uri,
       vpnName: vpn,
-      authenticationScheme: solace.AuthenticationScheme.OAUTH2,
       accessToken: token,
-      publisherProperties: { acknowledgeMode: solace.MessagePublisherAcknowledgeMode.PER_MESSAGE },
+      authenticationScheme: 'AuthenticationScheme_oauth2',
+      publisherProperties: { acknowledgeMode: 'PER_MESSAGE' },
       connectRetries: -1
-    })
+    }
+    console.log(opts)
+    this.session = solace.SolclientFactory.createSession(opts)
 
     this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
       this._eventAck.emit(sessionEvent.correlationKey)
@@ -147,7 +152,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await this._subscribeTopics()
 
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
-      const event = message.getDestination().getName() 
+      const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
       const msg = normalizeIncomingMessage(message.getBinaryAttachment())
       msg.event = event

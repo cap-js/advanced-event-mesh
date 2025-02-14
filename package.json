@@ -33,6 +33,13 @@
       "kinds": {
         "advanced-event-mesh": {
           "impl": "@cap-js/advanced-event-mesh",
+          "session": {
+            "authenticationScheme": "AuthenticationScheme_oauth2",
+            "publisherProperties": {
+              "acknowledgeMode": "PER_MESSAGE"
+            },
+            "connectRetries": -1
+          },
           "outbox": true,
           "subscribePrefix": "",
           "publishPrefix": "",
