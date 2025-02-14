@@ -102,6 +102,15 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       // password: this.options.password,
       connectRetries: -1,
     })
+
+    this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, (sessionEvent) => {
+      console.timeEnd('send')
+      this._eventAck.emit(sessionEvent.correlationKey)
+    });
+    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, (sessionEvent) => {
+      this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
+    });
+
     return new Promise((resolve, reject) => {
       try {
         this.session.connect()
@@ -122,20 +131,22 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event))
     message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
     message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT)
-    const correlationKey = {
-      name: "MESSAGE_CORRELATIONKEY",
-      id: cds.utils.uuid(),
-    };
+    //const correlationKey = {
+    //  name: "MESSAGE_CORRELATIONKEY",
+    //  id: cds.utils.uuid(),
+    //};
+    const correlationKey = cds.utils.uuid()
     message.setCorrelationKey(correlationKey);
     return new Promise((resolve, reject) => {
-      this._eventAck.once(correlationKey.id, () => {
-        this._eventRej.removeAllListeners(correlationKey.id);
+      this._eventAck.once(correlationKey, () => {
+        this._eventRej.removeAllListeners(correlationKey);
         resolve()
       })
-      this._eventRej.once(correlationKey.id, () => {
-        this._eventAck.removeAllListeners(correlationKey.id);
+      this._eventRej.once(correlationKey, _sessionEvent => {
+        this._eventAck.removeAllListeners(correlationKey);
         reject()
       })
+      console.time('send')
       this.session.send(message)
     })
   }
@@ -146,14 +157,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await this._createQueue()
     await this._subscribeTopics()
 
-    this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, (sessionEvent) => {
-      console.log('Delivery of message with correlation key = ' + JSON.stringify(sessionEvent.correlationKey) + ' confirmed.');
-      this._eventAck.emit(sessionEvent.correlationKey?.id)
-    });
-    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, (sessionEvent) => {
-      console.log('Delivery of message with correlation key = ' + JSON.stringify(sessionEvent.correlationKey) + ' rejected, info: ' + sessionEvent.infoStr);
-      this._eventRej.emit(sessionEvent.correlationKey?.id)
-    });
 
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async (message) => {
       console.log('received msg')
