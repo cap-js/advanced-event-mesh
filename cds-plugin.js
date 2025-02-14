@@ -91,11 +91,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       vpnName: vpn,
       authenticationScheme: solace.AuthenticationScheme.OAUTH2,
       accessToken: token,
-      publisherProperties: {
-        acknowledgeMode: solace.MessagePublisherAcknowledgeMode.PER_MESSAGE
-      },
-      // userName: this.options.user,
-      // password: this.options.password,
+      publisherProperties: { acknowledgeMode: solace.MessagePublisherAcknowledgeMode.PER_MESSAGE },
       connectRetries: -1
     })
 
