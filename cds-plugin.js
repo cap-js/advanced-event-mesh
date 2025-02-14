@@ -89,16 +89,17 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
     solace.SolclientFactory.init(factoryProps)
     solace.SolclientFactory.setLogLevel(solace.LogLevel.ERROR)
-    const opts = {
-      url: uri,
-      vpnName: vpn,
-      accessToken: token,
-      authenticationScheme: 'AuthenticationScheme_oauth2',
-      publisherProperties: { acknowledgeMode: 'PER_MESSAGE' },
-      connectRetries: -1
-    }
-    console.log(opts)
-    this.session = solace.SolclientFactory.createSession(opts)
+
+    this.session = solace.SolclientFactory.createSession(
+      Object.assign(
+        {
+          url: uri,
+          vpnName: vpn,
+          accessToken: token
+        },
+        this.options.session
+      )
+    )
 
     this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
       this._eventAck.emit(sessionEvent.correlationKey)
