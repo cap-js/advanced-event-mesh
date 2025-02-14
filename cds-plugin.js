@@ -85,7 +85,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
     solace.SolclientFactory.init(factoryProps)
-    solace.SolclientFactory.setLogLevel(solace.LogLevel.DEBUG)
+    solace.SolclientFactory.setLogLevel(solace.LogLevel.ERROR)
     this.session = solace.SolclientFactory.createSession({
       url: uri,
       vpnName: vpn,
@@ -158,11 +158,12 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, (_event) => {
-        this.LOG.error('Queue created', this.queueName)
+        this.LOG.error('Queue down', this.queueName)
         reject(new Error('Message Consumer failed to start.'))
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, (_event) => {
+        this.LOG.error('Could not connect to queue', this.queueName)
         reject(new Error('Message Consumer connection failed.'))
       })
       this.messageConsumer.connect()
