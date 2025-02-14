@@ -52,12 +52,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri }.'
       )
 
-    if (this.options.queue) {
-      const queueConfig = { ...this.options.queue }
-      delete queueConfig.name
-      if (Object.keys(queueConfig).length) this.queueConfig = queueConfig
-    }
-
     const optionsApp = require('@sap/cds/libx/_runtime/common/utils/vcap.js') // TODO: streamline
     const appId = () => {
       const appName = optionsApp.appName || 'CAP'
