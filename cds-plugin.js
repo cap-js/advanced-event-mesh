@@ -1,5 +1,5 @@
 const solace = require('solclientjs')
-const EventEmitter = require('node:events')
+const EventEmitter = require('events')
 
 const _JSONorString = string => {
   try {
@@ -46,7 +46,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const tokenEndpoint = this.options.credentials.tokenendpoint
     const vpn = this.options.credentials.vpn
     const uri = this.options.credentials.uri
-    // TODO: Error handling
+
     if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri)
       throw new Error(
         'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri }.'
