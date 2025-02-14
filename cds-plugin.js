@@ -47,7 +47,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const vpn = this.options.credentials.vpn
     const uri = this.options.credentials.uri
     // TODO: Error handling
-    console.log({ clientId, clientSecret, tokenEndpoint })
+    if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri) throw new Error('Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri }.')
 
     if (this.options.queue) {
       const queueConfig = { ...this.options.queue }
@@ -81,7 +81,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     }).then(x => x.json())
 
     const token = resp.access_token
-    console.log(token)
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
@@ -152,9 +151,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await this._subscribeTopics()
 
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
-      console.log('received msg')
+      const event = message.getDestination().getName() 
+      if (this.LOG._info) this.LOG.info('Received message', event)
       const msg = normalizeIncomingMessage(message.getBinaryAttachment())
-      msg.event = message.getDestination().getName()
+      msg.event = event
       try {
         await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
         message.acknowledge()
@@ -204,8 +204,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         if (subscribed.length === topics.length) resolve()
       })
       this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, sessionEvent => {
-        console.log('oh oh', sessionEvent.reason, 'for', sessionEvent.correlationKey)
-        console.log(sessionEvent)
         reject(sessionEvent.reason)
       })
       for (const topic of topics) {
