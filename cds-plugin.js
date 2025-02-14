@@ -101,7 +101,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
 
     this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
-      console.timeEnd('send')
       this._eventAck.emit(sessionEvent.correlationKey)
     })
     this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, sessionEvent => {
@@ -142,7 +141,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         this._eventAck.removeAllListeners(correlationKey)
         reject()
       })
-      console.time('send')
       this.session.send(message)
     })
   }
