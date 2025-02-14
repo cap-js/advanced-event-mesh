@@ -527,6 +527,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       // solace.MessageConsumerProperties
       queueDescriptor: { name: this.queueName, type: solace.QueueType.QUEUE },
       acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT, // Enabling Client ack
+      requiredSettlementOutcomes: [solace.MessageOutcome.FAILED, solace.MessageOutcome.REJECTED],
       createIfMissing: true // Create queue if not exists
     });
 
@@ -539,16 +540,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     });
 
     for (const topic of [...this.subscribedTopics].map(kv => kv[0])) {
-      // TODO: doesn't work
-      console.log('adding consumer for', topic)
-      // todo: subscribe on consumer
-    //  this.session.subscribe(
-    //    solace.SolclientFactory.createTopic(topic),
-    //    true,
-    //    "tutorial/topic",
-    //    10000
-    //  );
-
       this.messageConsumer.addSubscription(
         solace.SolclientFactory.createTopicDestination(topic),
         topic, // correlation key as topic name
@@ -566,7 +557,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
         this.LOG.error(e)
-        // TODO: message.settle(solace.MessageOutcome.FAILED)
+        message.settle(solace.MessageOutcome.FAILED)
       }
     });
 
