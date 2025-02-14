@@ -530,29 +530,46 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       createIfMissing: true // Create queue if not exists
     });
 
+    this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_OK, function (sessionEvent) {
+      console.log('=== Ready to receive messages. ===\n' +
+        'Correlation key - ' + sessionEvent.correlationKey);
+    });
+    this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, function (sessionEvent) {
+      console.log('Cannot subscribe to topic ' + sessionEvent.reason);
+    });
+
     for (const topic of [...this.subscribedTopics].map(kv => kv[0])) {
       // TODO: doesn't work
       console.log('adding consumer for', topic)
       // todo: subscribe on consumer
-      this.session.subscribe(
-        solace.SolclientFactory.createTopic(topic),
-        true,
-        "tutorial/topic",
-        10000
+    //  this.session.subscribe(
+    //    solace.SolclientFactory.createTopic(topic),
+    //    true,
+    //    "tutorial/topic",
+    //    10000
+    //  );
+
+      this.messageConsumer.addSubscription(
+        solace.SolclientFactory.createTopicDestination(topic),
+        topic, // correlation key as topic name
+        10000 // 10 seconds timeout for this operation
       );
     }
 
-    this.session.on(solace.SessionEventCode.MESSAGE, async message => {
+    this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async (message) => {
       console.log('received msg')
       const msg = normalizeIncomingMessage(message.getBinaryAttachment())
       msg.event = message.getDestination().getName()
       try {
         await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+        message.acknowledge();
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
         this.LOG.error(e)
+        // TODO: message.settle(solace.MessageOutcome.FAILED)
       }
     });
+
 
     this.messageConsumer.connect();
   }
