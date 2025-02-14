@@ -88,7 +88,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
     solace.SolclientFactory.init(factoryProps)
-    solace.SolclientFactory.setLogLevel(solace.LogLevel.ERROR)
+    solace.SolclientFactory.setLogLevel(this.options.logLevel)
 
     this.session = solace.SolclientFactory.createSession(
       Object.assign(
@@ -171,13 +171,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async _createQueue() {
     if (this.LOG._info) this.LOG.info('Creating queue', this.queueName)
     return new Promise((resolve, reject) => {
-      this.messageConsumer = this.session.createMessageConsumer({
-        // solace.MessageConsumerProperties
-        queueDescriptor: { name: this.queueName, type: solace.QueueType.QUEUE },
-        acknowledgeMode: solace.MessageConsumerAcknowledgeMode.CLIENT, // Enabling Client ack
-        requiredSettlementOutcomes: [solace.MessageOutcome.FAILED, solace.MessageOutcome.REJECTED],
-        createIfMissing: true
-      })
+      this.messageConsumer = this.session.createMessageConsumer(
+        Object.assign({ name: this.queueName }, this.options.queue)
+      )
 
       this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
         if (this.LOG._info) this.LOG.info('Queue created', this.queueName)
