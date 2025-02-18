@@ -11,7 +11,7 @@
           "clientsecret": "<clientsecret>",
           "tokenendpoint": "<tokenendpoint>",
           "user": "<user>",
-          "password": "<password"",
+          "password": "<password>",
           "amqp_uri": "<amqp_uri>",
           "uri": "<uri>",
           "management": {
