@@ -19,7 +19,7 @@ let messaging, credentials
 //  }
 //}))
 
-describe('event-broker service with ias auth for single tenant scenario', () => {
+describe('simple unit tests', () => {
   const { POST } = cds.test()
 
   beforeAll(async () => {
