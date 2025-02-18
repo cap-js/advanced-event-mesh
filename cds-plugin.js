@@ -81,7 +81,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     }).then(x => x.json())
 
-    const token = resp.access_token
+    this.token = resp.access_token
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
@@ -93,7 +93,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         {
           url: uri,
           vpnName: vpn,
-          accessToken: token
+          accessToken: this.token
         },
         this.options.session
       )
@@ -147,7 +147,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async startListening() {
     if (!this._listenToAll.value && !this.subscribedTopics.size) return
 
-    await this._createQueue()
+    //await this._createQueue()
+    await this._createQueueManagement()
     await this._subscribeTopics()
 
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
@@ -187,6 +188,39 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
       this.messageConsumer.connect()
     })
+  }
+
+  async _createQueueManagement() {
+    try {
+      const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
+      queueConfig.queueName = this.options.queue.queueDescriptor.name
+      // queueConfig.owner = this.options.owner
+      queueConfig.ingressEnabled = true
+      queueConfig.egressEnabled = true
+
+      console.log('url:', this.options.credentials.management.uri + `/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`)
+      console.log('queueConfig', queueConfig)
+      console.log('token', this.token)
+      const res = await fetch(this.options.credentials.management.uri + `/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
+        method: 'POST',
+        body: JSON.stringify(queueConfig),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer ' + this.token
+        }
+      }).then(r => r.json())
+      if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
+      if (res.statusCode === 201) return true
+    } catch (e) {
+      const error = new Error(`Queue "${this.options.queue.queueDescriptor.name}" could not be created`)
+      error.code = 'CREATE_QUEUE_FAILED'
+      error.target = { kind: 'QUEUE', queue: this.options.queue.queueDescriptor.name}
+      error.reason = e
+      this.LOG.error(error)
+      throw error
+    }
   }
 
   async _subscribeTopics() {
