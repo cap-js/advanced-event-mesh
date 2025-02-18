@@ -1,8 +1,44 @@
 const cds = require('@sap/cds')
+const { SolclientFactory, SolclientFactoryProperties, SessionEventCode } = require('solclientjs')
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
 let messaging, credentials
+
+
+jest.mock('solclientjs', () => {
+  return {
+    SolclientFactory: {
+      createSession(opts) {
+        const EventEmitter = require('events')
+        const s = new EventEmitter()
+        s.connect = jest.fn()
+        return s
+      },
+      init(opts) {
+      },
+      setLogLevel(opts) {
+      }
+    },
+    SolclientFactoryProperties: class {
+    },
+    SolclientFactoryProfiles: {},
+    SessionEventCode: {
+    }
+  }
+})
+
+
+global.fetch = jest.fn((url, opts) => {
+  if (url === '<tokenendpoint>') {
+    return Promise.resolve({
+      json: () => Promise.resolve('<sampleToken>'),
+    });
+  }
+  return Promise.resolve({
+    json: () => Promise.resolve('default response'),
+  });
+});
 
 //jest.mock('@sap/xssec', () => ({
 //  createSecurityContext(token, _credentials, id, cb) {
