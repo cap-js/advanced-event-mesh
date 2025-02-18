@@ -1,0 +1,14 @@
+{
+  "name": "unit_simple",
+  "dependencies": {
+    "@cap-js/advanced-event-mesh": "*"
+  },
+  "cds": {
+    "requires": {
+      "messaging": {
+        "kind": "advanced-event-mesh",
+        "outbox": false
+      }
+    }
+  }
+}
