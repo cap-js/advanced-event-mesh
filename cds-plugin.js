@@ -222,6 +222,35 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       throw error
     }
   }
+  async _subscribeTopicsManagement() {
+    try {
+      const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
+      queueConfig.queueName = this.options.queue.queueDescriptor.name
+      // queueConfig.owner = this.options.owner
+      queueConfig.ingressEnabled = true
+      queueConfig.egressEnabled = true
+
+      const res = await fetch(this.options.credentials.management.uri + `/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
+        method: 'POST',
+        body: JSON.stringify(queueConfig),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer ' + this.token
+        }
+      }).then(r => r.json())
+      if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
+      if (res.statusCode === 201) return true
+    } catch (e) {
+      const error = new Error(`Queue "${this.options.queue.queueDescriptor.name}" could not be created`)
+      error.code = 'CREATE_QUEUE_FAILED'
+      error.target = { kind: 'QUEUE', queue: this.options.queue.queueDescriptor.name}
+      error.reason = e
+      this.LOG.error(error)
+      throw error
+    }
+  }
 
   async _subscribeTopics() {
     const topics = [...this.subscribedTopics].map(kv => kv[0])
