@@ -46,8 +46,13 @@
             "ingressEnabled": true,
             "egressEnabled": true
           },
-          "queueDescriptor": {
-            "type": "QUEUE"
+          "consumer": {
+            "queueDescriptor": {
+              "type": "QUEUE"
+            },
+            "acknowledgeMode": "CLIENT",
+            "requiredSettlementOutcomes": [1, 3],
+            "createIfMissing": true
           },
           "logLevel": 1,
           "outbox": true,

@@ -150,16 +150,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await this._createQueueM()
     await this._subscribeTopicsM()
 
-    this.options.queueDescriptor.queueName = this.options.queue.name
+    this.options.consumer.queueDescriptor.name = this.options.queue.name
 
-    const opts = {
-      queueDescriptor: this.options.queueDescriptor,
-      acknowledgeMode: 'CLIENT',
-      requiredSettlementOutcomes: [1, 3],
-      createIfMissing: true
-    }
-
-    this.messageConsumer = this.session.createMessageConsumer(opts)
+    this.messageConsumer = this.session.createMessageConsumer(this.options.consumer)
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
