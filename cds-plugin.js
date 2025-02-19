@@ -148,9 +148,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     if (!this._listenToAll.value && !this.subscribedTopics.size) return
 
     //await this._createQueue()
-    await this._createQueueManagement()
-    await this._subscribeTopics()
+    await this._createQueueM()
+    await this._subscribeTopicsM()
 
+    this.messageConsumer = this.session.createMessageConsumer(this.options.queue)
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
@@ -165,15 +166,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         message.settle(solace.MessageOutcome.FAILED)
       }
     })
-  }
-
-  async _createQueue() {
-    if (this.LOG._info) this.LOG.info('Creating queue', this.options.queue.queueDescriptor.name)
     return new Promise((resolve, reject) => {
-      this.messageConsumer = this.session.createMessageConsumer(this.options.queue)
-
       this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
-        if (this.LOG._info) this.LOG.info('Queue created', this.options.queue.queueDescriptor.name)
+        if (this.LOG._info) this.LOG.info('Consumer connected')
         resolve()
       })
 
@@ -190,7 +185,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
   }
 
-  async _createQueueManagement() {
+
+  async _createQueueM() {
     try {
       const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
       queueConfig.queueName = this.options.queue.queueDescriptor.name
@@ -198,10 +194,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       queueConfig.ingressEnabled = true
       queueConfig.egressEnabled = true
 
-      console.log('url:', this.options.credentials.management.uri + `/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`)
-      console.log('queueConfig', queueConfig)
-      console.log('token', this.token)
-      const res = await fetch(this.options.credentials.management.uri + `/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
+      const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
         method: 'POST',
         body: JSON.stringify(queueConfig),
         headers: {
@@ -222,54 +215,89 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       throw error
     }
   }
-  async _subscribeTopicsManagement() {
-    try {
-      const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
-      queueConfig.queueName = this.options.queue.queueDescriptor.name
-      // queueConfig.owner = this.options.owner
-      queueConfig.ingressEnabled = true
-      queueConfig.egressEnabled = true
-
-      const res = await fetch(this.options.credentials.management.uri + `/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
-        method: 'POST',
-        body: JSON.stringify(queueConfig),
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          encoding: 'utf-8',
-          authorization: 'Bearer ' + this.token
-        }
-      }).then(r => r.json())
-      if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
-      if (res.statusCode === 201) return true
-    } catch (e) {
-      const error = new Error(`Queue "${this.options.queue.queueDescriptor.name}" could not be created`)
-      error.code = 'CREATE_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: this.options.queue.queueDescriptor.name}
-      error.reason = e
-      this.LOG.error(error)
-      throw error
-    }
-  }
-
-  async _subscribeTopics() {
+  async _subscribeTopicsM() {
+    const existingTopics = await this._getSubscriptionsM()
     const topics = [...this.subscribedTopics].map(kv => kv[0])
-    return new Promise((resolve, reject) => {
-      const subscribed = []
-      this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_OK, sessionEvent => {
-        subscribed.push(sessionEvent.correlationKey)
-        if (subscribed.length === topics.length) resolve()
-      })
-      this.messageConsumer.on(solace.MessageConsumerEventName.SUBSCRIPTION_ERROR, sessionEvent => {
-        reject(sessionEvent.reason)
-      })
-      for (const topic of topics) {
-        this.messageConsumer.addSubscription(
-          solace.SolclientFactory.createTopicDestination(topic),
-          topic, // correlation key as topic name
-          10000 // 10 seconds timeout for this operation
-        )
-      }
-    })
+    const newTopics = []
+    for (const t of topics) if (!existingTopics.includes(t)) newTopics.push(t)
+    const toBeDeletedTopics = []
+    for (const t of existingTopics) if (!topics.includes(t)) toBeDeletedTopics.push(t)
+    await Promise.all(toBeDeletedTopics.map(t => this._deleteSubscriptionM(t)))
+    await Promise.all(newTopics.map(t => this._createSubscriptionM(t)))
+  }
+
+  async _getSubscriptionsM() {
+    const queueName = this.options.queue.queueDescriptor.name
+    this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
+    try {
+      const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+        {
+          headers: {
+            accept: 'application/json',
+            authorization: 'Bearer ' + this.token
+          }
+        }
+      ).then(r => r.json())
+      if (res.meta?.error) throw res.meta.error
+      return res.data.map(t => t.subscriptionTopic)
+    } catch (e) {
+      const error = new Error(`Subscriptions for "${queueName}" could not be retrieved`)
+      error.code = 'GET_SUBSCRIPTIONS_FAILED'
+      error.target = { kind: 'SUBSCRIPTION', queue: queueName }
+      error.reason = e
+      this.LOG.error(error)
+      throw error
+    }
+  }
+
+  async _createSubscriptionM(topicPattern) {
+    const queueName = this.options.queue.queueDescriptor.name
+    this.LOG._info && this.LOG.info('Create subscription', { topic: topicPattern, queue: queueName })
+    try {
+      const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`
+        ,{
+          method: 'POST',
+          body: JSON.stringify({ subscriptionTopic: topicPattern }),
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            encoding: 'utf-8',
+            authorization: 'Bearer ' + this.token
+          }
+        }
+      ).then(r => r.json())
+      if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
+      if (res.statusCode === 201) return true
+    } catch (e) {
+      const error = new Error(`Subscription "${topicPattern}" could not be added to queue "${queueName}"`)
+      error.code = 'CREATE_SUBSCRIPTION_FAILED'
+      error.target = { kind: 'SUBSCRIPTION', queue: queueName, topic: topicPattern }
+      error.reason = e
+      this.LOG.error(error)
+      throw error
+    }
+  }
+
+  async _deleteSubscriptionM(topicPattern) {
+    const queueName = this.options.queue.queueDescriptor.name
+    this.LOG._info && this.LOG.info('Delete subscription', { topic: topicPattern, queue: queueName })
+    try {
+      await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`
+        ,{
+          method: 'DELETE',
+          headers: {
+            accept: 'application/json',
+            authorization: 'Bearer ' + this.token
+          }
+        }
+      ).then(r => r.json())
+    } catch (e) {
+      const error = new Error(`Subscription "${topicPattern}" could not be deleted from queue "${queueName}"`)
+      error.code = 'DELETE_SUBSCRIPTION_FAILED'
+      error.target = { kind: 'SUBSCRIPTION', queue: queueName, topic: topicPattern }
+      error.reason = e
+      this.LOG.error(error)
+      throw error
+    }
   }
 }
