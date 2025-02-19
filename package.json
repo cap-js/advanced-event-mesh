@@ -42,15 +42,6 @@
             "connectRetries": -1
           },
           "queue": {
-            "queueDescriptor": {
-              "type": "QUEUE"
-            },
-            "acknowledgeMode": "CLIENT",
-            "requiredSettlementOutcomes": [
-              1,
-              3
-            ],
-            "createIfMissing": true
           },
           "logLevel": 1,
           "outbox": true,
