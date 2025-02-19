@@ -66,10 +66,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       return queueName.replace(/\$appId/g, appId())
     }
 
-    this.options.queue.queueDescriptor.name = prepareQueueName(
-      this.options.queue.name || this.options.queue.queueDescriptor.name || '$appId'
-    )
-    delete this.options.queue.name
+    this.options.queue.name = prepareQueueName(this.options.queue.queueName || this.options.queue.name) // latter is more similar to other brokers
+    delete this.options.queue.queueName
 
     const resp = await fetch(tokenEndpoint, {
       method: 'POST',
@@ -174,12 +172,12 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, _event => {
-        this.LOG.error('Queue down', this.options.queue.queueDescriptor.name)
+        this.LOG.error('Queue down', this.options.queue.name)
         reject(new Error('Message Consumer failed to start.'))
       })
 
       this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, _event => {
-        this.LOG.error('Could not connect to queue', this.options.queue.queueDescriptor.name)
+        this.LOG.error('Could not connect to queue', this.options.queue.name)
         reject(new Error('Message Consumer connection failed.'))
       })
       this.messageConsumer.connect()
@@ -189,16 +187,21 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async _createQueueM() {
     try {
-      const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
-      queueConfig.queueName = this.options.queue.queueDescriptor.name
-      // queueConfig.owner = this.options.owner
-      queueConfig.ingressEnabled = true
-      queueConfig.egressEnabled = true
+      //const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
+      //queueConfig.queueName = this.options.queue.name
+      //// queueConfig.owner = this.options.owner
+      //queueConfig.ingressEnabled = true
+      //queueConfig.egressEnabled = true
+
+      // name -> queueName
+      const body = {...this.options.queue}
+      body.queueName ??= this.options.queue.name
+      delete body.name
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
       const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
         method: 'POST',
-        body: JSON.stringify(queueConfig),
+        body: JSON.stringify(body),
         headers: {
           accept: 'application/json',
           'content-type': 'application/json',
@@ -209,9 +212,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
       if (res.statusCode === 201) return true
     } catch (e) {
-      const error = new Error(`Queue "${this.options.queue.queueDescriptor.name}" could not be created`)
+      const error = new Error(`Queue "${this.options.queue.name}" could not be created`)
       error.code = 'CREATE_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: this.options.queue.queueDescriptor.name}
+      error.target = { kind: 'QUEUE', queue: this.options.queue.name}
       error.reason = e
       this.LOG.error(error)
       throw error
@@ -229,7 +232,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   }
 
   async _getSubscriptionsM() {
-    const queueName = this.options.queue.queueDescriptor.name
+    const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
       const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
@@ -253,7 +256,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   }
 
   async _createSubscriptionM(topicPattern) {
-    const queueName = this.options.queue.queueDescriptor.name
+    const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Create subscription', { topic: topicPattern, queue: queueName })
     try {
       const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`
@@ -281,7 +284,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   }
 
   async _deleteSubscriptionM(topicPattern) {
-    const queueName = this.options.queue.queueDescriptor.name
+    const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Delete subscription', { topic: topicPattern, queue: queueName })
     try {
       await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`

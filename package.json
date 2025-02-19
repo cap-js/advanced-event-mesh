@@ -42,6 +42,9 @@
             "connectRetries": -1
           },
           "queue": {
+            "queueName": "$appid",
+            "ingressEnabled": true,
+            "egressEnabled": true
           },
           "logLevel": 1,
           "outbox": true,
