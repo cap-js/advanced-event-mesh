@@ -147,7 +147,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async startListening() {
     if (!this._listenToAll.value && !this.subscribedTopics.size) return
 
-    //await this._createQueue()
     await this._createQueueM()
     await this._subscribeTopicsM()
 
