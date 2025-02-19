@@ -1,5 +1,5 @@
 const cds = require('@sap/cds')
-const { SolclientFactory, SolclientFactoryProperties, SessionEventCode } = require('solclientjs')
+const { SolclientFactory, SolclientFactoryProperties, SessionEventCode, MessageConsumerEventName } = require('solclientjs')
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
@@ -13,13 +13,20 @@ jest.mock('solclientjs', () => {
         const EventEmitter = require('events')
         const s = new EventEmitter()
         const c = new EventEmitter()
-        s.connect = jest.fn(() => {
+        s.connect = () => {
           s.emit('UP_NOTICE')
-        })
+        }
         s.send = (msg) => {
           c.emit('MESSGE', msg) // TODO
           s.emit('ACKNOWLEDGED_MESSAGE', msg)
         }
+        s.createMessageConsumer = (queue) => {
+          return c
+        }
+        c.connect = () => {
+          c.emit('UP')
+        }
+
         return s
       },
       createMessage() {
@@ -43,6 +50,10 @@ jest.mock('solclientjs', () => {
       setLogLevel(opts) {
       }
     },
+    MessageConsumerEventName: {
+      MESSAGE: 'MESSAGE',
+      UP: 'UP'
+    },
     MessageDeliveryModeType: {
       PERSISTENT: 'PERSISTENT'
     },
@@ -60,30 +71,20 @@ jest.mock('solclientjs', () => {
 
 
 global.fetch = jest.fn((url, opts) => {
+  console.log('url:', url)
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
       json: () => Promise.resolve('<sampleToken>'),
+    });
+  } else if (url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/CAP%2F0000/subscriptions') {
+    return Promise.resolve({
+      json: () => Promise.resolve({ data: [{subscriptionTopic: 'toBeDeleted'}] }),
     });
   }
   return Promise.resolve({
     json: () => Promise.resolve('default response'),
   });
 });
-
-//jest.mock('@sap/xssec', () => ({
-//  createSecurityContext(token, _credentials, id, cb) {
-//    if (token !== 'dummyToken') return cb(null, null, null)
-//    const dummyContext = {}
-//    const tokenInfoObj = { sub: 'eb-client-id', azp: 'eb-client-id' }
-//    const dummyTokenInfo = {
-//      getPayload: () => tokenInfoObj,
-//      getClientId: () => 'eb-client-id',
-//      getZoneId: () => 'dummyZoneId',
-//      ...tokenInfoObj
-//    }
-//    return cb(null, dummyContext, dummyTokenInfo)
-//  }
-//}))
 
 describe('simple unit tests', () => {
   const { POST } = cds.test()
@@ -98,17 +99,7 @@ describe('simple unit tests', () => {
   })
 
   test('emit from app service', async () => {
-    await messaging.emit('foo', DATA, HEADERS)
-    //mockHttps.handleHttpReq = () => {
-    //  return { message: 'ok' }
-    //}
-    //cds.context = { tenant: 't1', user: cds.User.privileged }
-    //try {
-    //  await ownSrv.emit('created', { data: 'testdata', headers: { some: 'headers' } })
-    //  expect(1).toBe('Should not be supported')
-    //} catch (e) {
-    //  expect(e.message).toMatch(/not supported/)
-    //}
+    messaging.emit('foo', DATA, HEADERS)
   })
 })
 
