@@ -107,17 +107,17 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
 
     return new Promise((resolve, reject) => {
-      try {
-        this.session.connect()
-      } catch (error) {
-        reject(error)
-      }
       this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
         resolve()
       })
       this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => {
         reject(e)
       })
+      try {
+        this.session.connect()
+      } catch (error) {
+        reject(error)
+      }
     })
   }
 

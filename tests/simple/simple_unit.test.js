@@ -12,7 +12,9 @@ jest.mock('solclientjs', () => {
       createSession(opts) {
         const EventEmitter = require('events')
         const s = new EventEmitter()
-        s.connect = jest.fn()
+        s.connect = jest.fn(() => {
+          s.emit('UP_NOTICE')
+        })
         return s
       },
       init(opts) {
@@ -24,6 +26,8 @@ jest.mock('solclientjs', () => {
     },
     SolclientFactoryProfiles: {},
     SessionEventCode: {
+      UP_NOTICE: 'UP_NOTICE',
+      CONNECT_FAILED_ERROR: 'CONNECT_FAILED_ERROR'
     }
   }
 })
