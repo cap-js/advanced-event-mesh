@@ -46,6 +46,9 @@
             "ingressEnabled": true,
             "egressEnabled": true
           },
+          "queueDescriptor": {
+            "type": "QUEUE"
+          },
           "logLevel": 1,
           "outbox": true,
           "subscribePrefix": "",
