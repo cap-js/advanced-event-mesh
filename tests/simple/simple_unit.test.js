@@ -2,8 +2,14 @@ const cds = require('@sap/cds')
 const { SolclientFactory, SolclientFactoryProperties, SessionEventCode, MessageConsumerEventName } = require('solclientjs')
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
+const DATA2 = { key2: 2, value2: 2 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
+const HEADERS2 = { keyHeader2: 2, valueHeader2: 2 }
 let messaging, credentials
+
+const check = {
+  sentMessages: []
+}
 
 
 jest.mock('solclientjs', () => {
@@ -17,7 +23,8 @@ jest.mock('solclientjs', () => {
           s.emit('UP_NOTICE')
         }
         s.send = (msg) => {
-          c.emit('MESSGE', msg) // TODO
+          c.emit('MESSGE', msg)
+          check.sentMessages.push(msg)
           s.emit('ACKNOWLEDGED_MESSAGE', msg)
         }
         s.createMessageConsumer = (queue) => {
@@ -32,10 +39,13 @@ jest.mock('solclientjs', () => {
       createMessage() {
         return {
           setDestination(dest) {
+            this.dest = dest
           },
           setBinaryAttachment(binary) {
+            this.binary = binary
           },
-          setDeliveryMode() {
+          setDeliveryMode(mode) {
+            this.mode = mode
           },
           setCorrelationKey(corr) {
             this.correlationKey = corr
@@ -87,19 +97,22 @@ global.fetch = jest.fn((url, opts) => {
 });
 
 describe('simple unit tests', () => {
-  const { POST } = cds.test()
+  cds.test()
 
   beforeAll(async () => {
     messaging = await cds.connect.to('messaging')
     credentials = messaging.options.credentials
   })
-  beforeEach(() => {
-    //mockHttps.request.mockClear()
-    //messaging.options.credentials = credentials
-  })
 
   test('emit from app service', async () => {
-    messaging.emit('foo', DATA, HEADERS)
+    await messaging.emit('foo', DATA, HEADERS)
+    await messaging.emit('bar', DATA2, HEADERS2)
+    expect(check.sentMessages[0].binary).toBe(JSON.stringify({ data: DATA, ...HEADERS }))
+    expect(check.sentMessages[0].dest).toBe('foo')
+    expect(check.sentMessages[0].mode).toBe('PERSISTENT')
+    expect(check.sentMessages[1].binary).toBe(JSON.stringify({ data: DATA2, ...HEADERS2 }))
+    expect(check.sentMessages[1].dest).toBe('bar')
+    expect(check.sentMessages[1].mode).toBe('PERSISTENT')
   })
 })
 
