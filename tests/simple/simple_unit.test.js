@@ -1,5 +1,10 @@
 const cds = require('@sap/cds')
-const { SolclientFactory, SolclientFactoryProperties, SessionEventCode, MessageConsumerEventName } = require('solclientjs')
+const {
+  SolclientFactory,
+  SolclientFactoryProperties,
+  SessionEventCode,
+  MessageConsumerEventName
+} = require('solclientjs')
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const DATA2 = { key2: 2, value2: 2 }
@@ -11,7 +16,6 @@ const check = {
   sentMessages: []
 }
 
-
 jest.mock('solclientjs', () => {
   return {
     SolclientFactory: {
@@ -22,12 +26,12 @@ jest.mock('solclientjs', () => {
         s.connect = () => {
           s.emit('UP_NOTICE')
         }
-        s.send = (msg) => {
+        s.send = msg => {
           c.emit('MESSGE', msg)
           check.sentMessages.push(msg)
           s.emit('ACKNOWLEDGED_MESSAGE', msg)
         }
-        s.createMessageConsumer = (queue) => {
+        s.createMessageConsumer = queue => {
           return c
         }
         c.connect = () => {
@@ -55,10 +59,8 @@ jest.mock('solclientjs', () => {
       createTopicDestination(topic) {
         return topic
       },
-      init(opts) {
-      },
-      setLogLevel(opts) {
-      }
+      init(opts) {},
+      setLogLevel(opts) {}
     },
     MessageConsumerEventName: {
       MESSAGE: 'MESSAGE',
@@ -67,8 +69,7 @@ jest.mock('solclientjs', () => {
     MessageDeliveryModeType: {
       PERSISTENT: 'PERSISTENT'
     },
-    SolclientFactoryProperties: class {
-    },
+    SolclientFactoryProperties: class {},
     SolclientFactoryProfiles: {},
     SessionEventCode: {
       UP_NOTICE: 'UP_NOTICE',
@@ -79,22 +80,21 @@ jest.mock('solclientjs', () => {
   }
 })
 
-
 global.fetch = jest.fn((url, opts) => {
   console.log('url:', url)
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
-      json: () => Promise.resolve('<sampleToken>'),
-    });
+      json: () => Promise.resolve('<sampleToken>')
+    })
   } else if (url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/CAP%2F0000/subscriptions') {
     return Promise.resolve({
-      json: () => Promise.resolve({ data: [{subscriptionTopic: 'toBeDeleted'}] }),
-    });
+      json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
+    })
   }
   return Promise.resolve({
-    json: () => Promise.resolve('default response'),
-  });
-});
+    json: () => Promise.resolve('default response')
+  })
+})
 
 describe('simple unit tests', () => {
   cds.test()
@@ -115,4 +115,3 @@ describe('simple unit tests', () => {
     expect(check.sentMessages[1].mode).toBe('PERSISTENT')
   })
 })
-

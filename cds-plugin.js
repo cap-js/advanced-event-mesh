@@ -9,7 +9,8 @@ const _JSONorString = string => {
   }
 }
 
-const NEED_CRED = 'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
+const NEED_CRED =
+  'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
 
 // Some messaging systems don't adhere to the standard that the payload has a `data` property.
 // For these cases, we interpret the whole payload as `data`.
@@ -51,8 +52,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const vpn = this.options.credentials.vpn
     const uri = this.options.credentials.uri
 
-    if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri)
-      throw new Error(NEED_CRED)
+    if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri) throw new Error(NEED_CRED)
 
     const optionsApp = require('@sap/cds/libx/_runtime/common/utils/vcap.js') // TODO: streamline
     const appId = () => {
@@ -150,7 +150,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await this._createQueueM()
     await this._subscribeTopicsM()
 
-    this.messageConsumer = this.session.createMessageConsumer({ queueDescriptor: this.options.queueDescriptor })
+    this.options.queueDescriptor.queueName = this.options.queue.name
+
+    const opts = {
+      queueDescriptor: this.options.queueDescriptor,
+      acknowledgeMode: 'CLIENT',
+      requiredSettlementOutcomes: [1, 3],
+      createIfMissing: true
+    }
+
+    this.messageConsumer = this.session.createMessageConsumer(opts)
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
@@ -184,7 +193,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
   }
 
-
   async _createQueueM() {
     try {
       //const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
@@ -194,27 +202,30 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       //queueConfig.egressEnabled = true
 
       // name -> queueName
-      const body = {...this.options.queue}
+      const body = { ...this.options.queue }
       body.queueName ??= this.options.queue.name
       delete body.name
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
-      const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          encoding: 'utf-8',
-          authorization: 'Bearer ' + this.token
+      const res = await fetch(
+        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`,
+        {
+          method: 'POST',
+          body: JSON.stringify(body),
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            encoding: 'utf-8',
+            authorization: 'Bearer ' + this.token
+          }
         }
-      }).then(r => r.json())
+      ).then(r => r.json())
       if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
       if (res.statusCode === 201) return true
     } catch (e) {
       const error = new Error(`Queue "${this.options.queue.name}" could not be created`)
       error.code = 'CREATE_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: this.options.queue.name}
+      error.target = { kind: 'QUEUE', queue: this.options.queue.name }
       error.reason = e
       this.LOG.error(error)
       throw error
@@ -235,7 +246,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
-      const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+      const res = await fetch(
+        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
         {
           headers: {
             accept: 'application/json',
@@ -259,8 +271,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Create subscription', { topic: topicPattern, queue: queueName })
     try {
-      const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`
-        ,{
+      const res = await fetch(
+        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+        {
           method: 'POST',
           body: JSON.stringify({ subscriptionTopic: topicPattern }),
           headers: {
@@ -287,8 +300,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Delete subscription', { topic: topicPattern, queue: queueName })
     try {
-      await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`
-        ,{
+      await fetch(
+        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`,
+        {
           method: 'DELETE',
           headers: {
             accept: 'application/json',
