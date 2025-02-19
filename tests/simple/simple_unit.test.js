@@ -12,22 +12,48 @@ jest.mock('solclientjs', () => {
       createSession(opts) {
         const EventEmitter = require('events')
         const s = new EventEmitter()
+        const c = new EventEmitter()
         s.connect = jest.fn(() => {
           s.emit('UP_NOTICE')
         })
+        s.send = (msg) => {
+          c.emit('MESSGE', msg) // TODO
+          s.emit('ACKNOWLEDGED_MESSAGE', msg)
+        }
         return s
+      },
+      createMessage() {
+        return {
+          setDestination(dest) {
+          },
+          setBinaryAttachment(binary) {
+          },
+          setDeliveryMode() {
+          },
+          setCorrelationKey(corr) {
+            this.correlationKey = corr
+          }
+        }
+      },
+      createTopicDestination(topic) {
+        return topic
       },
       init(opts) {
       },
       setLogLevel(opts) {
       }
     },
+    MessageDeliveryModeType: {
+      PERSISTENT: 'PERSISTENT'
+    },
     SolclientFactoryProperties: class {
     },
     SolclientFactoryProfiles: {},
     SessionEventCode: {
       UP_NOTICE: 'UP_NOTICE',
-      CONNECT_FAILED_ERROR: 'CONNECT_FAILED_ERROR'
+      CONNECT_FAILED_ERROR: 'CONNECT_FAILED_ERROR',
+      ACKNOWLEDGED_MESSAGE: 'ACKNOWLEDGED_MESSAGE',
+      REJECTED_MESSAGE_ERROR: 'REJECTED_MESSAGE_ERROR'
     }
   }
 })
