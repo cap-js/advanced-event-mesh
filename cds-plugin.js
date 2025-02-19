@@ -9,6 +9,8 @@ const _JSONorString = string => {
   }
 }
 
+const NEED_CRED = 'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
+
 // Some messaging systems don't adhere to the standard that the payload has a `data` property.
 // For these cases, we interpret the whole payload as `data`.
 const normalizeIncomingMessage = message => {
@@ -41,6 +43,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this.startListening()
     })
 
+    if (!this.options.credentials) throw new Error(NEED_CRED)
+
     const clientId = this.options.credentials.clientid
     const clientSecret = this.options.credentials.clientsecret
     const tokenEndpoint = this.options.credentials.tokenendpoint
@@ -48,9 +52,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const uri = this.options.credentials.uri
 
     if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri)
-      throw new Error(
-        'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri }.'
-      )
+      throw new Error(NEED_CRED)
 
     const optionsApp = require('@sap/cds/libx/_runtime/common/utils/vcap.js') // TODO: streamline
     const appId = () => {
@@ -193,6 +195,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       queueConfig.ingressEnabled = true
       queueConfig.egressEnabled = true
 
+      // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
       const res = await fetch(`${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`, {
         method: 'POST',
         body: JSON.stringify(queueConfig),
