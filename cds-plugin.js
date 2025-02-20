@@ -44,15 +44,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this.startListening()
     })
 
-    if (!this.options.credentials) throw new Error(NEED_CRED)
-
-    const clientId = this.options.credentials.clientid
-    const clientSecret = this.options.credentials.clientsecret
-    const tokenEndpoint = this.options.credentials.tokenendpoint
-    const vpn = this.options.credentials.vpn
-    const uri = this.options.credentials.uri
-
-    if (!clientId || !clientSecret || !tokenEndpoint || !vpn || !uri) throw new Error(NEED_CRED)
+    if (
+      !this.options.credentials ||
+      !this.options.credentials.clientid ||
+      !this.options.credentials.clientsecret ||
+      !this.options.credentials.tokenendpoint ||
+      !this.options.credentials.vpn ||
+      !this.options.credentials.uri ||
+      !this.options.credentials.management_uri
+    )
+      throw new Error(NEED_CRED)
 
     const optionsApp = require('@sap/cds/libx/_runtime/common/utils/vcap.js') // TODO: streamline
     const appId = () => {
@@ -69,15 +70,15 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.options.queue.name = prepareQueueName(this.options.queue.queueName || this.options.queue.name) // latter is more similar to other brokers
     delete this.options.queue.queueName
 
-    const resp = await fetch(tokenEndpoint, {
+    const resp = await fetch(this.options.credentials.tokenendpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret // scope?
+        client_id: this.options.credentials.clientid,
+        client_secret: this.options.credentials.clientsecret // scope?
       })
     }).then(x => x.json())
 
@@ -91,8 +92,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.session = solace.SolclientFactory.createSession(
       Object.assign(
         {
-          url: uri,
-          vpnName: vpn,
+          url: this.options.credentials.uri,
+          vpnName: this.options.credentials.vpn,
           accessToken: this.token
         },
         this.options.session
@@ -164,7 +165,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
         this.LOG.error(e)
-        if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED)) message.settle(solace.MessageOutcome.FAILED)
+        if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
+          message.settle(solace.MessageOutcome.FAILED)
         else message.acknowledge()
       }
     })
@@ -189,12 +191,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async _createQueueM() {
     try {
-      //const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
-      //queueConfig.queueName = this.options.queue.name
-      //// queueConfig.owner = this.options.owner
-      //queueConfig.ingressEnabled = true
-      //queueConfig.egressEnabled = true
-
       // name -> queueName
       const body = { ...this.options.queue }
       body.queueName ??= this.options.queue.name
