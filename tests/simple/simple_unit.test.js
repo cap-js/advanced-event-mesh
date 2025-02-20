@@ -1,10 +1,4 @@
 const cds = require('@sap/cds')
-const {
-  SolclientFactory,
-  SolclientFactoryProperties,
-  SessionEventCode,
-  MessageConsumerEventName
-} = require('solclientjs')
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
 const DATA2 = { key2: 2, value2: 2 }
