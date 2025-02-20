@@ -155,7 +155,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         this._eventRej.removeAllListeners(correlationKey)
         resolve()
       })
-      this._eventRej.once(correlationKey, _sessionEvent => {
+      this._eventRej.once(correlationKey, () => {
         this._eventAck.removeAllListeners(correlationKey)
         reject()
       })
@@ -202,12 +202,12 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         resolve()
       })
 
-      this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, _event => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, () => {
         this.LOG.error('Queue down', this.options.queue.name)
         reject(new Error('Message Consumer failed to start.'))
       })
 
-      this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, _event => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, () => {
         this.LOG.error('Could not connect to queue', this.options.queue.name)
         reject(new Error('Message Consumer connection failed.'))
       })

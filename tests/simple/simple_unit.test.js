@@ -6,7 +6,7 @@ const MUST_REJECT = { mustReject: true, value1: 1 }
 const DATA2 = { key2: 2, value2: 2 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
 const HEADERS2 = { keyHeader2: 2, valueHeader2: 2 }
-let messaging, credentials
+let messaging
 
 const check = {
   sentMessages: []
@@ -88,7 +88,7 @@ jest.mock('solclientjs', () => {
   }
 })
 
-global.fetch = jest.fn((url, _opts) => {
+global.fetch = jest.fn(url => {
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
       json: () => Promise.resolve({ access_token: '<sampleToken>' })
