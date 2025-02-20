@@ -9,9 +9,6 @@ const _JSONorString = string => {
   }
 }
 
-const NEED_CRED =
-  'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
-
 // Some messaging systems don't adhere to the standard that the payload has a `data` property.
 // For these cases, we interpret the whole payload as `data`.
 const normalizeIncomingMessage = message => {
@@ -65,7 +62,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       !this.options.credentials.uri ||
       !this.options.credentials.management_uri
     )
-      throw new Error(NEED_CRED)
+      throw new Error(
+        'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
+      )
 
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
