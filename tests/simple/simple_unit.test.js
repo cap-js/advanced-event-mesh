@@ -95,7 +95,7 @@ global.fetch = jest.fn((url, opts) => {
     })
   } else if (
     !opts.method &&
-    url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions'
+    url === '<management-uri>/msgVpns/<vpn>/queues/testQueueName/subscriptions'
   ) {
     return Promise.resolve({
       json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
