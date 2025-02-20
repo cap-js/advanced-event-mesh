@@ -42,7 +42,7 @@
             "connectRetries": -1
           },
           "queue": {
-            "queueName": "$appid",
+            "queueName": "$appId",
             "ingressEnabled": true,
             "egressEnabled": true
           },

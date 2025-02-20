@@ -1,3 +1,4 @@
+using { db } from '../db/schema';
 service Foo {
-  entity Bar { key ID: UUID; };
+  entity Messages as projection on db.Messages;
 }
