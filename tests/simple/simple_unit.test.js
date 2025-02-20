@@ -1,6 +1,8 @@
 const cds = require('@sap/cds')
 cds.test.in(__dirname)
 const DATA = { key1: 1, value1: 1 }
+const MUST_FAIL = { mustFail: true, value1: 1 }
+const MUST_REJECT = { mustReject: true, value1: 1 }
 const DATA2 = { key2: 2, value2: 2 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
 const HEADERS2 = { keyHeader2: 2, valueHeader2: 2 }
@@ -72,13 +74,13 @@ jest.mock('solclientjs', () => {
       REJECTED_MESSAGE_ERROR: 'REJECTED_MESSAGE_ERROR'
     },
     MessageOutcome: {
-      FAILED: 1
+      FAILED: 1,
+      REJECTED: 3
     }
   }
 })
 
 global.fetch = jest.fn((url, opts) => {
-  console.log('url:', url)
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
       json: () => Promise.resolve('<sampleToken>')
@@ -141,7 +143,7 @@ describe('simple unit tests', () => {
     })
   })
 
-  test('failed consumption', done => {
+  test('failed consumption because of no handler', done => {
     messaging.messageConsumer.emit('MESSAGE', {
       getDestination() {
         return {
@@ -157,8 +159,64 @@ describe('simple unit tests', () => {
         done(new Error('Should not have succeeded'))
       },
       settle(e) {
-        console.log({ e })
-        done()
+        try {
+          expect(e).toBe(1)
+          done()
+        } catch (e) {
+          done(e)
+        }
+      }
+    })
+  })
+
+  test('failed consumption because of failure', done => {
+    messaging.messageConsumer.emit('MESSAGE', {
+      getDestination() {
+        return {
+          getName() {
+            return 'cap.external.object.changed.v1'
+          }
+        }
+      },
+      getBinaryAttachment() {
+        return JSON.stringify({ data: MUST_FAIL, ...HEADERS })
+      },
+      async acknowledge() {
+        done(new Error('Should not have succeeded'))
+      },
+      settle(e) {
+        try {
+          expect(e).toBe(1)
+          done()
+        } catch (e) {
+          done(e)
+        }
+      }
+    })
+  })
+
+  test('failed consumption because of reject', done => {
+    messaging.messageConsumer.emit('MESSAGE', {
+      getDestination() {
+        return {
+          getName() {
+            return 'cap.external.object.changed.v1'
+          }
+        }
+      },
+      getBinaryAttachment() {
+        return JSON.stringify({ data: MUST_REJECT, ...HEADERS })
+      },
+      async acknowledge() {
+        done(new Error('Should not have succeeded'))
+      },
+      settle(e) {
+        try {
+          expect(e).toBe(3)
+          done()
+        } catch (e) {
+          done(e)
+        }
       }
     })
   })

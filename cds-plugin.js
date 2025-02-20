@@ -183,9 +183,17 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
         this.LOG.error(e)
+        // The error property `unrecoverable` is used for the outbox to mark unrecoverable errors.
+        // We can use the same here to properly reject the message.
+        if (
+          e.unrecoverable &&
+          this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.REJECTED)
+        )
+          return message.settle(solace.MessageOutcome.REJECTED)
         if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
-          message.settle(solace.MessageOutcome.FAILED)
-        else message.acknowledge()
+          return message.settle(solace.MessageOutcome.FAILED)
+        // Nothing else we can do
+        message.acknowledge()
       }
     })
     return new Promise((resolve, reject) => {
