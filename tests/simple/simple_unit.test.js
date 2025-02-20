@@ -61,7 +61,9 @@ jest.mock('solclientjs', () => {
         return topic
       },
       init(opts) {},
-      setLogLevel(opts) {}
+      setLogLevel(lvl) {
+        expect(lvl).toBe(666)
+      }
     },
     MessageConsumerEventName: {
       MESSAGE: 'MESSAGE',
