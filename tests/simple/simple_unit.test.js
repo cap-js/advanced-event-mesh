@@ -18,6 +18,7 @@ jest.mock('solclientjs', () => {
       createSession(opts) {
         expect(opts.url).toBe('<uri>')
         expect(opts.vpnName).toBe('<vpn>')
+        expect(opts.accessToken).toBe('<sampleToken>')
         expect(opts.authenticationScheme).toBe('AuthenticationScheme_oauth2')
         expect(opts.customSessionOpt).toBe(true)
         const EventEmitter = require('events')
@@ -90,7 +91,7 @@ jest.mock('solclientjs', () => {
 global.fetch = jest.fn((url, opts) => {
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
-      json: () => Promise.resolve('<sampleToken>')
+      json: () => Promise.resolve({ access_token: '<sampleToken>' })
     })
   } else if (url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
     return Promise.resolve({
