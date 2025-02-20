@@ -40,8 +40,7 @@ const getAppMetadata = () => {
   if (appMetadata) {
     return {
       appID: appMetadata.id,
-      appName: appMetadata.name,
-      appURL: appMetadata.url
+      appName: appMetadata.name
     }
   }
 
@@ -49,12 +48,7 @@ const getAppMetadata = () => {
 
   return {
     appID: vcapApplication && vcapApplication.application_id,
-    appName: vcapApplication && vcapApplication.application_name,
-    appURL:
-      vcapApplication &&
-      vcapApplication.application_uris &&
-      vcapApplication.application_uris[0] &&
-      `https://${vcapApplication.application_uris[0].replace(/^https?:\/\//, '')}`
+    appName: vcapApplication && vcapApplication.application_name
   }
 }
 
