@@ -7,7 +7,17 @@
     "requires": {
       "messaging": {
         "kind": "advanced-event-mesh",
-        "outbox": false
+        "outbox": false,
+        "session": {
+          "customSessionOpt": true
+        },
+        "queue": {
+          "queueName": "testQueueName",
+          "customQueueOpt": true
+        },
+        "consumer": {
+          "customConsumerOpt": true
+        }
       },
       "ExtSrv": {
         "kind": "odata",

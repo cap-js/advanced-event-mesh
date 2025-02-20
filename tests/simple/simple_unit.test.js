@@ -16,6 +16,10 @@ jest.mock('solclientjs', () => {
   return {
     SolclientFactory: {
       createSession(opts) {
+        expect(opts.url).toBe('<uri>')
+        expect(opts.vpnName).toBe('<vpn>')
+        expect(opts.authenticationScheme).toBe('AuthenticationScheme_oauth2')
+        expect(opts.customSessionOpt).toBe(true)
         const EventEmitter = require('events')
         const s = new EventEmitter()
         const c = new EventEmitter()
@@ -27,7 +31,8 @@ jest.mock('solclientjs', () => {
           check.sentMessages.push(msg)
           s.emit('ACKNOWLEDGED_MESSAGE', msg)
         }
-        s.createMessageConsumer = queue => {
+        s.createMessageConsumer = opts => {
+          expect(opts.customConsumerOpt).toBe(true)
           return c
         }
         c.connect = () => {
@@ -85,7 +90,7 @@ global.fetch = jest.fn((url, opts) => {
     return Promise.resolve({
       json: () => Promise.resolve('<sampleToken>')
     })
-  } else if (url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/CAP%2F0000/subscriptions') {
+  } else if (url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
     return Promise.resolve({
       json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
     })
