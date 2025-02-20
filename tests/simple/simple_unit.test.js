@@ -61,7 +61,7 @@ jest.mock('solclientjs', () => {
       createTopicDestination(topic) {
         return topic
       },
-      init(_opts) {},
+      init() {},
       setLogLevel(lvl) {
         expect(lvl).toBe(666)
       }
