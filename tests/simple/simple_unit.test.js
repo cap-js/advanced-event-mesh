@@ -125,13 +125,18 @@ describe('simple unit tests', () => {
         }
       },
       getBinaryAttachment() {
-        return JSON.stringify({data: DATA, ...HEADERS})
+        return JSON.stringify({ data: DATA, ...HEADERS })
       },
       async acknowledge() {
         const messages = await SELECT.from('db.Messages')
-        expect(messages[0].data).toBe(JSON.stringify(DATA))
-        expect(messages[0].headers).toBe(JSON.stringify(HEADERS))
-        done()
+        try {
+          expect(messages[0].event).toBe('changed')
+          expect(messages[0].data).toBe(JSON.stringify(DATA))
+          expect(messages[0].headers).toBe(JSON.stringify(HEADERS))
+          done()
+        } catch (e) {
+          done(e)
+        }
       },
       settle() {
         done(new Error('Message could not be received'))
