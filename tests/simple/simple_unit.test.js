@@ -61,7 +61,7 @@ jest.mock('solclientjs', () => {
       createTopicDestination(topic) {
         return topic
       },
-      init(opts) {},
+      init(_opts) {},
       setLogLevel(lvl) {
         expect(lvl).toBe(666)
       }
@@ -88,7 +88,7 @@ jest.mock('solclientjs', () => {
   }
 })
 
-global.fetch = jest.fn((url, opts) => {
+global.fetch = jest.fn((url, _opts) => {
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
       json: () => Promise.resolve({ access_token: '<sampleToken>' })
