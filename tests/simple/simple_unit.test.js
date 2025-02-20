@@ -78,7 +78,7 @@ jest.mock('solclientjs', () => {
       REJECTED_MESSAGE_ERROR: 'REJECTED_MESSAGE_ERROR'
     },
     MessageOutcome: {
-      FAILED: 'FAILED'
+      FAILED: 1
     }
   }
 })
