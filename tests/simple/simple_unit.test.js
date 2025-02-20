@@ -76,6 +76,9 @@ jest.mock('solclientjs', () => {
       CONNECT_FAILED_ERROR: 'CONNECT_FAILED_ERROR',
       ACKNOWLEDGED_MESSAGE: 'ACKNOWLEDGED_MESSAGE',
       REJECTED_MESSAGE_ERROR: 'REJECTED_MESSAGE_ERROR'
+    },
+    MessageOutcome: {
+      FAILED: 'FAILED'
     }
   }
 })
@@ -115,7 +118,7 @@ describe('simple unit tests', () => {
     expect(check.sentMessages[1].mode).toBe('PERSISTENT')
   })
 
-  test('subscription successful', done => {
+  test('successful consumption', done => {
     messaging.messageConsumer.emit('MESSAGE', {
       getDestination() {
         return {
@@ -140,6 +143,28 @@ describe('simple unit tests', () => {
       },
       settle() {
         done(new Error('Message could not be received'))
+      }
+    })
+  })
+
+  test('failed consumption', done => {
+    messaging.messageConsumer.emit('MESSAGE', {
+      getDestination() {
+        return {
+          getName() {
+            return 'does_not_have_a_handler'
+          }
+        }
+      },
+      getBinaryAttachment() {
+        return JSON.stringify({ data: DATA, ...HEADERS })
+      },
+      async acknowledge() {
+        done(new Error('Should not have succeeded'))
+      },
+      settle(e) {
+        console.log({ e })
+        done()
       }
     })
   })

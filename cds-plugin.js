@@ -164,7 +164,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
         this.LOG.error(e)
-        message.settle(solace.MessageOutcome.FAILED)
+        if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED)) message.settle(solace.MessageOutcome.FAILED)
+        else message.acknowledge()
       }
     })
     return new Promise((resolve, reject) => {
