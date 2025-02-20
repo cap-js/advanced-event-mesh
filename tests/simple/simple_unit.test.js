@@ -114,4 +114,28 @@ describe('simple unit tests', () => {
     expect(check.sentMessages[1].dest).toBe('bar')
     expect(check.sentMessages[1].mode).toBe('PERSISTENT')
   })
+
+  test('subscription successful', done => {
+    messaging.messageConsumer.emit('MESSAGE', {
+      getDestination() {
+        return {
+          getName() {
+            return 'cap.external.object.changed.v1'
+          }
+        }
+      },
+      getBinaryAttachment() {
+        return JSON.stringify({data: DATA, ...HEADERS})
+      },
+      async acknowledge() {
+        const messages = await SELECT.from('db.Messages')
+        expect(messages[0].data).toBe(JSON.stringify(DATA))
+        expect(messages[0].headers).toBe(JSON.stringify(HEADERS))
+        done()
+      },
+      settle() {
+        done(new Error('Message could not be received'))
+      }
+    })
+  })
 })
