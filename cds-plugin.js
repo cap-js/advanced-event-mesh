@@ -37,13 +37,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async init() {
     await super.init()
 
-    this._eventAck = new EventEmitter() // for reliable messaging
-    this._eventRej = new EventEmitter() // for reliable messaging
-
-    cds.once('listening', () => {
-      this.startListening()
-    })
-
     if (
       !this.options.credentials ||
       !this.options.credentials.clientid ||
@@ -54,6 +47,13 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       !this.options.credentials.management_uri
     )
       throw new Error(NEED_CRED)
+
+    this._eventAck = new EventEmitter() // for reliable messaging
+    this._eventRej = new EventEmitter() // for reliable messaging
+
+    cds.once('listening', () => {
+      this.startListening()
+    })
 
     const optionsApp = require('@sap/cds/libx/_runtime/common/utils/vcap.js') // TODO: streamline
     const appId = () => {
