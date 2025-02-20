@@ -224,7 +224,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
       const res = await fetch(
-        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues`,
         {
           method: 'POST',
           body: JSON.stringify(body),
@@ -263,7 +263,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
       const res = await fetch(
-        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
         {
           headers: {
             accept: 'application/json',
@@ -288,7 +288,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.LOG._info && this.LOG.info('Create subscription', { topic: topicPattern, queue: queueName })
     try {
       const res = await fetch(
-        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
         {
           method: 'POST',
           body: JSON.stringify({ subscriptionTopic: topicPattern }),
@@ -317,7 +317,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.LOG._info && this.LOG.info('Delete subscription', { topic: topicPattern, queue: queueName })
     try {
       await fetch(
-        `${this.options.credentials.management_uri}/SEMP/v2/config/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`,
         {
           method: 'DELETE',
           headers: {
