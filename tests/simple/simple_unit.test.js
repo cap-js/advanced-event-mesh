@@ -88,12 +88,15 @@ jest.mock('solclientjs', () => {
   }
 })
 
-global.fetch = jest.fn(url => {
+global.fetch = jest.fn((url, opts) => {
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
       json: () => Promise.resolve({ access_token: '<sampleToken>' })
     })
-  } else if (url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
+  } else if (
+    !opts.method &&
+    url === '<management-uri>/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions'
+  ) {
     return Promise.resolve({
       json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
     })
