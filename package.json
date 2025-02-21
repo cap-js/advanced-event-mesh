@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@cap-js/advanced-event-mesh": "file:.",
-    "@sap-cloud-sdk/resilience": "^3.21.0",
+    "@sap-cloud-sdk/resilience": "^3.26.1",
     "@cap-js/sqlite": "*"
   },
   "cds": {
