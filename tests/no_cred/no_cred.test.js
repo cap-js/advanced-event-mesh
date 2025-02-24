@@ -13,7 +13,7 @@ describe('No Credentials', () => {
 
   test('not enough binding info', async () => {
     const aem = new AEM()
-    aem.credenials = { something: 'unrelated' }
+    aem.credentials = { something: 'unrelated' }
     try {
       await aem.init()
       expect(1).toBe(2)
