@@ -101,6 +101,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     }).then(x => x.json())
 
+    if (resp.error) throw new Error('Could not fetch token for SAP Advanced Event Mesh: ' + resp.error_description)
     this.token = resp.access_token
 
     const factoryProps = new solace.SolclientFactoryProperties()
