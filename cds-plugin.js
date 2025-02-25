@@ -1,3 +1,4 @@
+const cds = require('@sap/cds')
 const solace = require('solclientjs')
 const EventEmitter = require('events')
 
@@ -100,6 +101,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     }).then(x => x.json())
 
+    if (resp.error) throw new Error('Could not fetch token for SAP Advanced Event Mesh: ' + resp.error_description)
     this.token = resp.access_token
 
     const factoryProps = new solace.SolclientFactoryProperties()
@@ -285,7 +287,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async _createSubscriptionM(topicPattern) {
     const queueName = this.options.queue.name
-    this.LOG._info && this.LOG.info('Create subscription', { topic: topicPattern, queue: queueName })
+    this.LOG._info &&
+      this.LOG.info('Create subscription', {
+        topic: topicPattern,
+        queue: queueName
+      })
     try {
       const res = await fetch(
         `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
@@ -305,7 +311,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     } catch (e) {
       const error = new Error(`Subscription "${topicPattern}" could not be added to queue "${queueName}"`)
       error.code = 'CREATE_SUBSCRIPTION_FAILED'
-      error.target = { kind: 'SUBSCRIPTION', queue: queueName, topic: topicPattern }
+      error.target = {
+        kind: 'SUBSCRIPTION',
+        queue: queueName,
+        topic: topicPattern
+      }
       error.reason = e
       this.LOG.error(error)
       throw error
@@ -314,7 +324,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async _deleteSubscriptionM(topicPattern) {
     const queueName = this.options.queue.name
-    this.LOG._info && this.LOG.info('Delete subscription', { topic: topicPattern, queue: queueName })
+    this.LOG._info &&
+      this.LOG.info('Delete subscription', {
+        topic: topicPattern,
+        queue: queueName
+      })
     try {
       await fetch(
         `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`,
@@ -329,7 +343,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     } catch (e) {
       const error = new Error(`Subscription "${topicPattern}" could not be deleted from queue "${queueName}"`)
       error.code = 'DELETE_SUBSCRIPTION_FAILED'
-      error.target = { kind: 'SUBSCRIPTION', queue: queueName, topic: topicPattern }
+      error.target = {
+        kind: 'SUBSCRIPTION',
+        queue: queueName,
+        topic: topicPattern
+      }
       error.reason = e
       this.LOG.error(error)
       throw error
