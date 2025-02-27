@@ -64,7 +64,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       !this.options.credentials.management_uri
     )
       throw new Error(
-        'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
+        'Missing credentials for SAP Integration Suite, advanced event mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
       )
 
     this._eventAck = new EventEmitter() // for reliable messaging
@@ -101,7 +101,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     }).then(x => x.json())
 
-    if (resp.error) throw new Error('Could not fetch token for SAP Advanced Event Mesh: ' + resp.error_description)
+    if (resp.error)
+      throw new Error('Could not fetch token for SAP Integration Suite, advanced event mesh: ' + resp.error_description)
     this.token = resp.access_token
 
     const factoryProps = new solace.SolclientFactoryProperties()
