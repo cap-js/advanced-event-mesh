@@ -131,7 +131,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     }).then(r => r.json())
 
-    if (res.error) throw new Error('Could not fetch token for SAP Advanced Event Mesh: ' + res.error_description)
+    if (res.error) {
+      throw new Error('Could not fetch token for SAP Integration Suite, advanced event mesh: ' + res.error_description)
+    }
 
     this.token = res.access_token
 
