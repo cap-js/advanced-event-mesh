@@ -93,17 +93,50 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     }
 
     // I'd rather not require users to specify _another_ cds.requires service
-    const validateSrvCreds = (() => {
+    const vcredentials = (() => {
       const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
       for (const name in vcap) {
-        const srv = vcap[name]
+        const srv = vcap[name][0]
         if (srv.plan === "aem-validation-service-plan") {
           return srv.credentials
         }
       }
     })()
-    if (!validateSrvCreds) throw new Error('Missing credentials for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`.\n\nYou need to create a service binding.')
+    if (!vcredentials ||
+        !vcredentials.handshake ||
+        !vcredentials.handshake.oa2 ||
+        !vcredentials.handshake.oa2.clientid ||
+        !vcredentials.handshake.oa2.clientsecret ||
+        !vcredentials.handshake.oa2.tokenendpoint ||
+        !vcredentials.handshake.uri ||
+        !vcredentials.serviceinstanceid
+    ) throw new Error('Missing credentials for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`.\n\nYou need to create a service binding.')
 
+    const vOps = {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: vcredentials.handshake.oa2.clientid,
+        client_secret: vcredentials.handshake.oa2.clientsecret
+      })
+    }
+    console.log('vOps', vOps)
+
+    const vRes = await fetch(vcredentials.handshake.oa2.tokenendpoint, vOps).then(r => r.json())
+    if (vRes.error)
+      throw new Error('Could not fetch token for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`: ' + vRes.error_description)
+    const vToken = vRes.access_token
+
+    const vRes2 = await fetch(vcredentials.handshake.uri, {
+      method: 'POST',
+      body: JSON.stringify({ hostName: '??? to be clarified'}),
+      headers: {
+        accept: 'application/json',
+        Authorization: 'Bearer ' + vToken,
+      }
+    }).then(r => { console.log(r);return r} ).then(r => r.json())
+    console.log({ vRes2 })
 
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
