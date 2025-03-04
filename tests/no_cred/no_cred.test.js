@@ -7,7 +7,7 @@ describe('No Credentials', () => {
       await aem.init()
       expect(1).toBe(2)
     } catch (e) {
-      expect(e.message).toMatch('Missing credentials')
+      expect(e.message).toMatch('Missing or malformed credentials')
     }
   })
 
@@ -18,7 +18,7 @@ describe('No Credentials', () => {
       await aem.init()
       expect(1).toBe(2)
     } catch (e) {
-      expect(e.message).toMatch('Missing credentials')
+      expect(e.message).toMatch('Missing or malformed credentials')
     }
   })
 })

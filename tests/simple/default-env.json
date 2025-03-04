@@ -7,11 +7,19 @@
         "tags": [],
         "credentials": {
           "vpn": "<vpn>",
-          "clientid": "<clientid>",
-          "clientsecret": "<clientsecret>",
-          "tokenendpoint": "<tokenendpoint>",
-          "uri": "<uri>",
-          "management_uri": "<management-uri>"
+          "authentication-service": {
+            "token_endpoint": "<tokenendpoint>",
+            "clientid": "<clientid>",
+            "clientsecret": "<clientsecret>"
+          },
+          "endpoints": {
+            "eventing-endpoint": {
+              "uri": "<uri>"
+            },
+            "management-endpoint": {
+              "uri": "<management-uri>"
+            }
+          }
         },
         "syslog_drain_url": null,
         "volume_mounts": []

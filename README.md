@@ -29,7 +29,7 @@ npm add @cap-js/advanced-event-mesh
 
 Please follow the [guide on messaging](https://cap.cloud.sap/docs/guides/messaging/) to get an overview over the messaging concepts of CAP.
 
-You can create an SAP Advanced Event Mesh service with the following configuration:
+You can create an SAP Integration Suite, advanced event mesh service with the following configuration:
 
 ```jsonc
 {
