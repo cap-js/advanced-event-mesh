@@ -1,6 +1,28 @@
 const cds = require('@sap/cds')
+
 const solace = require('solclientjs')
+
 const EventEmitter = require('events')
+
+const _CREDS_ERROR = `Missing or malformed credentials for SAP Integration Suite, advanced event mesh.
+
+Provide a user-provided service with name "advanced-event-mesh" and credentials in the following format:
+{
+  "authentication-service": {
+    "token_endpoint": "https://<host>/oauth2/token",
+    "clientid": "<clientid>",
+    "clientsecret": "<clientsecret>"
+  },
+  "endpoints": {
+    "eventing-endpoint": {
+      "uri": "https://<host>:443"
+    },
+    "management-endpoint": {
+      "uri": "https://<host>:943/SEMP/v2/config"
+    }
+  },
+  "vpn": "<vpn>"
+}`
 
 const _JSONorString = string => {
   try {
@@ -56,16 +78,19 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     if (
       !this.options.credentials ||
-      !this.options.credentials.clientid ||
-      !this.options.credentials.clientsecret ||
-      !this.options.credentials.tokenendpoint ||
-      !this.options.credentials.vpn ||
-      !this.options.credentials.uri ||
-      !this.options.credentials.management_uri
-    )
-      throw new Error(
-        'Missing credentials for SAP Advanced Event Mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
-      )
+      !this.options.credentials['authentication-service'] ||
+      !this.options.credentials['authentication-service'].token_endpoint ||
+      !this.options.credentials['authentication-service'].clientid ||
+      !this.options.credentials['authentication-service'].clientsecret ||
+      !this.options.credentials.enpoints ||
+      !this.options.credentials.enpoints['eventing-endpoint'] ||
+      !this.options.credentials.enpoints['eventing-endpoint'].uri ||
+      !this.options.credentials.enpoints['management-endpoint'] ||
+      !this.options.credentials.enpoints['management-endpoint'].uri ||
+      !this.options.credentials.vpn
+    ) {
+      throw new Error(_CREDS_ERROR)
+    }
 
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
@@ -265,7 +290,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
       const res = await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
+          queueName
+        )}/subscriptions`,
         {
           headers: {
             accept: 'application/json',
@@ -294,7 +321,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     try {
       const res = await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
+          queueName
+        )}/subscriptions`,
         {
           method: 'POST',
           body: JSON.stringify({ subscriptionTopic: topicPattern }),
@@ -331,7 +360,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     try {
       await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`,
+        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
+          queueName
+        )}/subscriptions/${encodeURIComponent(topicPattern)}`,
         {
           method: 'DELETE',
           headers: {
