@@ -114,18 +114,26 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.options.queue.name = prepareQueueName(this.options.queue.queueName || this.options.queue.name) // latter is more similar to other brokers
     delete this.options.queue.queueName
 
-    const resp = await fetch(this.options.credentials['authentication-service'].token_endpoint, {
+    const mgmt_uri = this.options.credentials.endpoints['management-endpoint'].uri
+    const vpn = this.options.credentials.vpn
+    const queueName = this.options.queue.name
+    this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
+    this._subscriptions_uri = `${this._queues_uri}/${encodeURIComponent(queueName)}/subscriptions`
+
+    const { token_endpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
+    const res = await fetch(token_endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: this.options.credentials['authentication-service'].clientid,
-        client_secret: this.options.credentials['authentication-service'].clientsecret // scope?
+        client_id: clientid,
+        client_secret: clientsecret // scope?
       })
-    }).then(x => x.json())
+    }).then(r => r.json())
 
-    if (resp.error) throw new Error('Could not fetch token for SAP Advanced Event Mesh: ' + resp.error_description)
-    this.token = resp.access_token
+    if (res.error) throw new Error('Could not fetch token for SAP Advanced Event Mesh: ' + res.error_description)
+
+    this.token = res.access_token
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
@@ -248,19 +256,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       delete body.name
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
-      const res = await fetch(
-        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues`,
-        {
-          method: 'POST',
-          body: JSON.stringify(body),
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json',
-            encoding: 'utf-8',
-            authorization: 'Bearer ' + this.token
-          }
+      const res = await fetch(this._queues_uri, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
       if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
       if (res.statusCode === 201) return true
     } catch (e) {
@@ -287,17 +292,12 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
-      const res = await fetch(
-        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
-          queueName
-        )}/subscriptions`,
-        {
-          headers: {
-            accept: 'application/json',
-            authorization: 'Bearer ' + this.token
-          }
+      const res = await fetch(this._subscriptions_uri, {
+        headers: {
+          accept: 'application/json',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
       if (res.meta?.error) throw res.meta.error
       return res.data.map(t => t.subscriptionTopic)
     } catch (e) {
@@ -318,21 +318,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         queue: queueName
       })
     try {
-      const res = await fetch(
-        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
-          queueName
-        )}/subscriptions`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ subscriptionTopic: topicPattern }),
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json',
-            encoding: 'utf-8',
-            authorization: 'Bearer ' + this.token
-          }
+      const res = await fetch(this._subscriptions_uri, {
+        method: 'POST',
+        body: JSON.stringify({ subscriptionTopic: topicPattern }),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
       if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
       if (res.statusCode === 201) return true
     } catch (e) {
@@ -357,18 +352,13 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         queue: queueName
       })
     try {
-      await fetch(
-        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
-          queueName
-        )}/subscriptions/${encodeURIComponent(topicPattern)}`,
-        {
-          method: 'DELETE',
-          headers: {
-            accept: 'application/json',
-            authorization: 'Bearer ' + this.token
-          }
+      await fetch(`${this._subscriptions_uri}/${encodeURIComponent(topicPattern)}`, {
+        method: 'DELETE',
+        headers: {
+          accept: 'application/json',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
     } catch (e) {
       const error = new Error(`Subscription "${topicPattern}" could not be deleted from queue "${queueName}"`)
       error.code = 'DELETE_SUBSCRIPTION_FAILED'
