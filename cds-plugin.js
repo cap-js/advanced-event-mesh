@@ -82,11 +82,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       !this.options.credentials['authentication-service'].token_endpoint ||
       !this.options.credentials['authentication-service'].clientid ||
       !this.options.credentials['authentication-service'].clientsecret ||
-      !this.options.credentials.enpoints ||
-      !this.options.credentials.enpoints['eventing-endpoint'] ||
-      !this.options.credentials.enpoints['eventing-endpoint'].uri ||
-      !this.options.credentials.enpoints['management-endpoint'] ||
-      !this.options.credentials.enpoints['management-endpoint'].uri ||
+      !this.options.credentials.endpoints ||
+      !this.options.credentials.endpoints['eventing-endpoint'] ||
+      !this.options.credentials.endpoints['eventing-endpoint'].uri ||
+      !this.options.credentials.endpoints['management-endpoint'] ||
+      !this.options.credentials.endpoints['management-endpoint'].uri ||
       !this.options.credentials.vpn
     ) {
       throw new Error(_CREDS_ERROR)
@@ -114,15 +114,13 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.options.queue.name = prepareQueueName(this.options.queue.queueName || this.options.queue.name) // latter is more similar to other brokers
     delete this.options.queue.queueName
 
-    const resp = await fetch(this.options.credentials.tokenendpoint, {
+    const resp = await fetch(this.options.credentials['authentication-service'].token_endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: this.options.credentials.clientid,
-        client_secret: this.options.credentials.clientsecret // scope?
+        client_id: this.options.credentials['authentication-service'].clientid,
+        client_secret: this.options.credentials['authentication-service'].clientsecret // scope?
       })
     }).then(x => x.json())
 
@@ -137,7 +135,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.session = solace.SolclientFactory.createSession(
       Object.assign(
         {
-          url: this.options.credentials.uri,
+          url: this.options.credentials.endpoints['eventing-endpoint'].uri,
           vpnName: this.options.credentials.vpn,
           accessToken: this.token
         },
@@ -251,7 +249,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
       const res = await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues`,
+        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues`,
         {
           method: 'POST',
           body: JSON.stringify(body),
@@ -290,7 +288,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
       const res = await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
+        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
           queueName
         )}/subscriptions`,
         {
@@ -321,7 +319,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     try {
       const res = await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
+        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
           queueName
         )}/subscriptions`,
         {
@@ -360,7 +358,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
     try {
       await fetch(
-        `${this.options.credentials.management_uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
+        `${this.options.credentials.endpoints['management-endpoint'].uri}/msgVpns/${this.options.credentials.vpn}/queues/${encodeURIComponent(
           queueName
         )}/subscriptions/${encodeURIComponent(topicPattern)}`,
         {
