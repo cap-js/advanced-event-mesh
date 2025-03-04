@@ -67,6 +67,19 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         'Missing credentials for SAP Integration Suite, advanced event mesh.\n\nProvide a user-provided service with name `advanced-event-mesh` and credentials { clientid, clientsecret, tokenendpoint, vpn, uri, management_uri }.'
       )
 
+    // I'd rather not require users to specify _another_ cds.requires service
+    const validateSrvCreds = (() => {
+      const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
+      for (const name in vcap) {
+        const srv = vcap[name]
+        if (srv.plan === "aem-validation-service-plan") {
+          return srv.credentials
+        }
+      }
+    })()
+    if (!validateSrvCreds) throw new Error('Missing credentials for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`.\n\nYou need to create a service binding.')
+
+
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
 
