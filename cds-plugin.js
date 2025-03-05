@@ -3,6 +3,7 @@ const cds = require('@sap/cds')
 const solace = require('solclientjs')
 
 const EventEmitter = require('events')
+const { hostname } = require('os')
 
 const _CREDS_ERROR = `Missing or malformed credentials for SAP Integration Suite, advanced event mesh.
 
@@ -97,22 +98,26 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
       for (const name in vcap) {
         const srv = vcap[name][0]
-        if (srv.plan === "aem-validation-service-plan") {
+        if (srv.plan === 'aem-validation-service-plan') {
           return srv.credentials
         }
       }
     })()
-    if (!vcredentials ||
-        !vcredentials.handshake ||
-        !vcredentials.handshake.oa2 ||
-        !vcredentials.handshake.oa2.clientid ||
-        !vcredentials.handshake.oa2.clientsecret ||
-        !vcredentials.handshake.oa2.tokenendpoint ||
-        !vcredentials.handshake.uri ||
-        !vcredentials.serviceinstanceid
-    ) throw new Error('Missing credentials for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`.\n\nYou need to create a service binding.')
+    if (
+      !vcredentials ||
+      !vcredentials.handshake ||
+      !vcredentials.handshake.oa2 ||
+      !vcredentials.handshake.oa2.clientid ||
+      !vcredentials.handshake.oa2.clientsecret ||
+      !vcredentials.handshake.oa2.tokenendpoint ||
+      !vcredentials.handshake.uri ||
+      !vcredentials.serviceinstanceid
+    )
+      throw new Error(
+        'Missing credentials for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`.\n\nYou need to create a service binding.'
+      )
 
-    const vOps = {
+    const validationTokenRes = await fetch(vcredentials.handshake.oa2.tokenendpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -120,23 +125,27 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         client_id: vcredentials.handshake.oa2.clientid,
         client_secret: vcredentials.handshake.oa2.clientsecret
       })
-    }
-    console.log('vOps', vOps)
+    }).then(r => r.json())
 
-    const vRes = await fetch(vcredentials.handshake.oa2.tokenendpoint, vOps).then(r => r.json())
-    if (vRes.error)
-      throw new Error('Could not fetch token for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`: ' + vRes.error_description)
-    const vToken = vRes.access_token
+    if (validationTokenRes.error)
+      throw new Error(
+        'Could not fetch token for SAP Integration Suite, advanced event mesh with plan `aem-validation-service`: ' +
+          validationTokenRes.error_description
+      )
+    const validationToken = validationTokenRes.access_token
 
-    const vRes2 = await fetch(vcredentials.handshake.uri, {
+    const validatationRes = await fetch(vcredentials.handshake.uri, {
       method: 'POST',
-      body: JSON.stringify({ hostName: '??? to be clarified'}),
+      body: JSON.stringify({
+        hostName: this.options.credentials.endpoints['management-endpoint'].uri.match(/https:\/\/(.*):.*/)[1]
+      }),
       headers: {
-        accept: 'application/json',
-        Authorization: 'Bearer ' + vToken,
+        Authorization: 'Bearer ' + validationToken
       }
-    }).then(r => { console.log(r);return r} ).then(r => r.json())
-    console.log({ vRes2 })
+    })
+
+    if (validatationRes.status !== 200)
+      throw new Error('SAP Integration Suite, advanced event mesh: The provided VMR is not provisioned via AEM')
 
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
