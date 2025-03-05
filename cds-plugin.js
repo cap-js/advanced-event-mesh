@@ -3,7 +3,6 @@ const cds = require('@sap/cds')
 const solace = require('solclientjs')
 
 const EventEmitter = require('events')
-const { hostname } = require('os')
 
 const _CREDS_ERROR = `Missing or malformed credentials for SAP Integration Suite, advanced event mesh.
 
