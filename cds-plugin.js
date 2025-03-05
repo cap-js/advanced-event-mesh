@@ -25,26 +25,6 @@ Provide a user-provided service with name "advanced-event-mesh" and credentials 
   "vpn": "<vpn>"
 }`
 
-const _CREDS_ERROR = `Missing or malformed credentials for SAP Integration Suite, advanced event mesh.
-
-Provide a user-provided service with name "advanced-event-mesh" and credentials in the following format:
-{
-  "authentication-service": {
-    "token_endpoint": "https://<host>/oauth2/token",
-    "clientid": "<clientid>",
-    "clientsecret": "<clientsecret>"
-  },
-  "endpoints": {
-    "eventing-endpoint": {
-      "uri": "https://<host>:443"
-    },
-    "management-endpoint": {
-      "uri": "https://<host>:943/SEMP/v2/config"
-    }
-  },
-  "vpn": "<vpn>"
-}`
-
 const _JSONorString = string => {
   try {
     return JSON.parse(string)
