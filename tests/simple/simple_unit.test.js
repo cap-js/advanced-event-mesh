@@ -93,12 +93,13 @@ global.fetch = jest.fn((url, opts) => {
     return Promise.resolve({
       json: () => Promise.resolve({ access_token: '<sampleToken>' })
     })
-  } else if (!opts.method && url === '<management-uri>/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
+  } else if (!opts.method && url === 'https://management-host:666/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
     return Promise.resolve({
       json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
     })
   }
   return Promise.resolve({
+    status: 200,
     json: () => Promise.resolve('default response')
   })
 })
