@@ -136,7 +136,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const validatationRes = await fetch(vcredentials.handshake.uri, {
       method: 'POST',
       body: JSON.stringify({
-        hostName: this.options.credentials.endpoints['management-endpoint'].uri.match(/https:\/\/(.*):.*/)[1]
+        hostName: this.options.credentials.endpoints['management-endpoint'].uri.match(/https?:\/\/(.*):.*/)[1]
       }),
       headers: {
         Authorization: 'Bearer ' + validationToken
