@@ -1,28 +1,90 @@
 const cds = require('@sap/cds')
 
 const solace = require('solclientjs')
-
 const EventEmitter = require('events')
 
-const _CREDS_ERROR = `Missing or malformed credentials for SAP Integration Suite, advanced event mesh.
-
-Provide a user-provided service with name "advanced-event-mesh" and credentials in the following format:
-{
+const AEM = 'SAP Integration Suite, advanced event mesh'
+const AEM_VAL = `${AEM} with plan "aem-validation-service"`
+const UPS_FORMAT = `{
   "authentication-service": {
     "token_endpoint": "https://<host>/oauth2/token",
     "clientid": "<clientid>",
     "clientsecret": "<clientsecret>"
   },
   "endpoints": {
-    "eventing-endpoint": {
-      "uri": "https://<host>:443"
-    },
-    "management-endpoint": {
-      "uri": "https://<host>:943/SEMP/v2/config"
+    "advanced-event-mesh": {
+      "uri": "https://<host>:943/SEMP/v2/config",
+      "smf_uri": "https://<host>:443"
     }
   },
   "vpn": "<vpn>"
 }`
+
+const _validateAndFetchEndpoints = creds => {
+  const MSG = `Missing or malformed credentials for ${AEM}.\n\nBind your app to a user-provided service with name "advanced-event-mesh" and credentials in the following format:\n${UPS_FORMAT}`
+
+  if (
+    !creds ||
+    !creds['authentication-service'] ||
+    !creds['authentication-service'].token_endpoint ||
+    !creds['authentication-service'].clientid ||
+    !creds['authentication-service'].clientsecret ||
+    !creds.endpoints ||
+    !creds.vpn
+  ) {
+    throw new Error(MSG)
+  }
+
+  const first = creds.endpoints[Object.keys(creds.endpoints)[0]]
+  if (!first || !first.uri || !first.smf_uri) throw new Error(MSG)
+
+  return first
+}
+
+const _validateBroker = async mgmt_uri => {
+  // I'd rather not require users to specify _another_ cds.requires service
+  const creds = (() => {
+    const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
+    for (const name in vcap) {
+      const srv = vcap[name][0]
+      if (srv.plan === 'aem-validation-service-plan') return srv.credentials
+    }
+  })()
+
+  if (
+    !creds ||
+    !creds.handshake ||
+    !creds.handshake.oa2 ||
+    !creds.handshake.oa2.clientid ||
+    !creds.handshake.oa2.clientsecret ||
+    !creds.handshake.oa2.tokenendpoint ||
+    !creds.handshake.uri ||
+    !creds.serviceinstanceid
+  ) {
+    throw new Error(`Missing credentials for ${AEM_VAL}.\n\nYou need to create a service binding.`)
+  }
+
+  const validationTokenRes = await fetch(creds.handshake.oa2.tokenendpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: creds.handshake.oa2.clientid,
+      client_secret: creds.handshake.oa2.clientsecret
+    })
+  }).then(r => r.json())
+
+  if (validationTokenRes.error)
+    throw new Error(`Could not fetch token for ${AEM_VAL}: ${validationTokenRes.error_description}`)
+  const validationToken = validationTokenRes.access_token
+
+  const validatationRes = await fetch(creds.handshake.uri, {
+    method: 'POST',
+    body: JSON.stringify({ hostName: mgmt_uri.match(/https?:\/\/(.*):.*/)[1] }),
+    headers: { Authorization: 'Bearer ' + validationToken }
+  })
+  if (validatationRes.status !== 200) throw new Error(`${AEM}: The provided VMR is not provisioned via AEM`)
+}
 
 const _JSONorString = string => {
   try {
@@ -76,21 +138,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async init() {
     await super.init()
 
-    if (
-      !this.options.credentials ||
-      !this.options.credentials['authentication-service'] ||
-      !this.options.credentials['authentication-service'].token_endpoint ||
-      !this.options.credentials['authentication-service'].clientid ||
-      !this.options.credentials['authentication-service'].clientsecret ||
-      !this.options.credentials.endpoints ||
-      !this.options.credentials.endpoints['eventing-endpoint'] ||
-      !this.options.credentials.endpoints['eventing-endpoint'].uri ||
-      !this.options.credentials.endpoints['management-endpoint'] ||
-      !this.options.credentials.endpoints['management-endpoint'].uri ||
-      !this.options.credentials.vpn
-    ) {
-      throw new Error(_CREDS_ERROR)
-    }
+    const { uri: mgmt_uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
+    await _validateBroker(mgmt_uri)
 
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
@@ -114,7 +163,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.options.queue.name = prepareQueueName(this.options.queue.queueName || this.options.queue.name) // latter is more similar to other brokers
     delete this.options.queue.queueName
 
-    const mgmt_uri = this.options.credentials.endpoints['management-endpoint'].uri
     const vpn = this.options.credentials.vpn
     const queueName = this.options.queue.name
     this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
@@ -130,12 +178,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         client_secret: clientsecret // scope?
       })
     }).then(r => r.json())
-
-    if (res.error) {
-      throw new Error('Could not fetch token for SAP Integration Suite, advanced event mesh: ' + res.error_description)
-    }
-
-    this.token = res.access_token
+    if (res.error) throw new Error(`Could not fetch token for ${AEM}: ${res.error_description}`)
+    this.token = res.access_token //> REVISIT: when do we refresh the token?
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
@@ -144,11 +188,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     this.session = solace.SolclientFactory.createSession(
       Object.assign(
-        {
-          url: this.options.credentials.endpoints['eventing-endpoint'].uri,
-          vpnName: this.options.credentials.vpn,
-          accessToken: this.token
-        },
+        { url: smf_uri, vpnName: this.options.credentials.vpn, accessToken: this.token },
         this.options.session
       )
     )
@@ -223,8 +263,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         if (
           e.unrecoverable &&
           this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.REJECTED)
-        )
+        ) {
           return message.settle(solace.MessageOutcome.REJECTED)
+        }
         if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
           return message.settle(solace.MessageOutcome.FAILED)
         // Nothing else we can do
@@ -236,12 +277,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         if (this.LOG._info) this.LOG.info('Consumer connected')
         resolve()
       })
-
       this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, () => {
         this.LOG.error('Queue down', this.options.queue.name)
         reject(new Error('Message Consumer failed to start.'))
       })
-
       this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, () => {
         this.LOG.error('Could not connect to queue', this.options.queue.name)
         reject(new Error('Message Consumer connection failed.'))
@@ -279,6 +318,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       throw error
     }
   }
+
   async _subscribeTopicsM() {
     const existingTopics = await this._getSubscriptionsM()
     const topics = [...this.subscribedTopics].map(kv => kv[0])
