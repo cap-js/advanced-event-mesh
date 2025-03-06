@@ -1,0 +1,30 @@
+{
+  "name": "unit_simple",
+  "dependencies": {
+    "@cap-js/advanced-event-mesh": "*"
+  },
+  "cds": {
+    "requires": {
+      "messaging": {
+        "kind": "advanced-event-mesh",
+        "outbox": false,
+        "session": {
+          "customSessionOpt": true
+        },
+        "queue": {
+          "queueName": "testQueueName",
+          "customQueueOpt": true
+        },
+        "consumer": {
+          "customConsumerOpt": true
+        },
+        "logLevel": 666
+      },
+      "ExtSrv": {
+        "kind": "odata",
+        "model": "./srv/external/extSrv.cds",
+        "credentials": {}
+      }
+    }
+  }
+}

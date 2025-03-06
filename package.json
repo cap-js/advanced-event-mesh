@@ -1,7 +1,7 @@
 {
   "name": "@cap-js/advanced-event-mesh",
   "version": "0.0.1",
-  "description": "CDS plugin providing integration to SAP Advanced Event Mesh",
+  "description": "CDS plugin providing integration with SAP Integration Suite, advanced event mesh",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cap-js/advanced-event-mesh.git"
@@ -18,20 +18,45 @@
     "test": "npx jest --silent"
   },
   "dependencies": {
-    "@sap/xb-msg-amqp-v100": "*"
+    "@sap/xb-msg-amqp-v100": "*",
+    "solclientjs": "^10.17.1"
   },
   "peerDependencies": {
     "@sap/cds": ">=7"
   },
   "devDependencies": {
     "@cap-js/advanced-event-mesh": "file:.",
-    "@sap-cloud-sdk/resilience": "^3.21.0"
+    "@sap-cloud-sdk/resilience": "^3.21.0",
+    "@cap-js/sqlite": "*"
   },
   "cds": {
     "requires": {
       "kinds": {
         "advanced-event-mesh": {
           "impl": "@cap-js/advanced-event-mesh",
+          "session": {
+            "authenticationScheme": "AuthenticationScheme_oauth2",
+            "publisherProperties": {
+              "acknowledgeMode": "PER_MESSAGE"
+            },
+            "connectRetries": -1
+          },
+          "queue": {
+            "queueName": "$appId",
+            "ingressEnabled": true,
+            "egressEnabled": true
+          },
+          "consumer": {
+            "queueDescriptor": {
+              "type": "QUEUE"
+            },
+            "acknowledgeMode": "CLIENT",
+            "requiredSettlementOutcomes": [
+              1,
+              3
+            ]
+          },
+          "logLevel": 1,
           "outbox": true,
           "subscribePrefix": "",
           "publishPrefix": "",

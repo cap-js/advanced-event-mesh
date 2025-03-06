@@ -1,129 +1,307 @@
-const EnterpriseMessagingShared = require('@sap/cds/libx/_runtime/messaging/enterprise-messaging-shared.js')
+const cds = require('@sap/cds')
 
-const requiredParams =
-  'No proper credentials found for SAP Advanced Event Mesh.\n\nHint: You need to create a user-provided service (default name `advanced-event-mesh`)'
+const solace = require('solclientjs')
 
-class AEMManagement {
-  constructor({ optionsManagement, queueConfig, queueName, subscribedTopics, LOG }) {
-    this.options = optionsManagement
-    this.queueConfig = queueConfig
-    this.queueName = queueName
-    this.subscribedTopics = subscribedTopics
-    this.LOG = LOG
+const EventEmitter = require('events')
+
+const _CREDS_ERROR = `Missing or malformed credentials for SAP Integration Suite, advanced event mesh.
+
+Provide a user-provided service with name "advanced-event-mesh" and credentials in the following format:
+{
+  "authentication-service": {
+    "token_endpoint": "https://<host>/oauth2/token",
+    "clientid": "<clientid>",
+    "clientsecret": "<clientsecret>"
+  },
+  "endpoints": {
+    "eventing-endpoint": {
+      "uri": "https://<host>:443"
+    },
+    "management-endpoint": {
+      "uri": "https://<host>:943/SEMP/v2/config"
+    }
+  },
+  "vpn": "<vpn>"
+}`
+
+const _JSONorString = string => {
+  try {
+    return JSON.parse(string)
+  } catch {
+    return string
   }
-  async getQueue(queueName = this.queueName) {
-    this.LOG._info && this.LOG.info('Get queue', { queue: queueName })
-    try {
-      const res = await fetch(
-        this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues/${encodeURIComponent(queueName)}`,
+}
+
+// Some messaging systems don't adhere to the standard that the payload has a `data` property.
+// For these cases, we interpret the whole payload as `data`.
+const normalizeIncomingMessage = message => {
+  const _payload = typeof message === 'object' ? message : _JSONorString(message)
+  let data, headers
+  if (typeof _payload === 'object' && 'data' in _payload) {
+    data = _payload.data
+    headers = { ..._payload }
+    delete headers.data
+  } else {
+    data = _payload
+    headers = {}
+  }
+
+  return {
+    data,
+    headers,
+    inbound: true
+  }
+}
+
+const getAppMetadata = () => {
+  // NOT official, but consistent with Event Mesh!
+  const appMetadata = cds.env.app
+
+  if (appMetadata) {
+    return {
+      appID: appMetadata.id,
+      appName: appMetadata.name
+    }
+  }
+
+  const vcapApplication = process.env.VCAP_APPLICATION && JSON.parse(process.env.VCAP_APPLICATION)
+
+  return {
+    appID: vcapApplication && vcapApplication.application_id,
+    appName: vcapApplication && vcapApplication.application_name
+  }
+}
+
+module.exports = class AdvancedEventMesh extends cds.MessagingService {
+  async init() {
+    await super.init()
+
+    if (
+      !this.options.credentials ||
+      !this.options.credentials['authentication-service'] ||
+      !this.options.credentials['authentication-service'].token_endpoint ||
+      !this.options.credentials['authentication-service'].clientid ||
+      !this.options.credentials['authentication-service'].clientsecret ||
+      !this.options.credentials.endpoints ||
+      !this.options.credentials.endpoints['eventing-endpoint'] ||
+      !this.options.credentials.endpoints['eventing-endpoint'].uri ||
+      !this.options.credentials.endpoints['management-endpoint'] ||
+      !this.options.credentials.endpoints['management-endpoint'].uri ||
+      !this.options.credentials.vpn
+    ) {
+      throw new Error(_CREDS_ERROR)
+    }
+
+    this._eventAck = new EventEmitter() // for reliable messaging
+    this._eventRej = new EventEmitter() // for reliable messaging
+
+    cds.once('listening', () => {
+      this.startListening()
+    })
+
+    const optionsApp = getAppMetadata()
+    const appId = () => {
+      const appName = optionsApp.appName || 'CAP'
+      const appID = optionsApp.appID || '00000000'
+      const shrunkAppID = appID.substring(0, 4)
+      return `${appName}/${shrunkAppID}`
+    }
+
+    const prepareQueueName = queueName => {
+      return queueName.replace(/\$appId/g, appId())
+    }
+
+    this.options.queue.name = prepareQueueName(this.options.queue.queueName || this.options.queue.name) // latter is more similar to other brokers
+    delete this.options.queue.queueName
+
+    const mgmt_uri = this.options.credentials.endpoints['management-endpoint'].uri
+    const vpn = this.options.credentials.vpn
+    const queueName = this.options.queue.name
+    this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
+    this._subscriptions_uri = `${this._queues_uri}/${encodeURIComponent(queueName)}/subscriptions`
+
+    const { token_endpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
+    const res = await fetch(token_endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientid,
+        client_secret: clientsecret // scope?
+      })
+    }).then(r => r.json())
+
+    if (res.error) {
+      throw new Error('Could not fetch token for SAP Integration Suite, advanced event mesh: ' + res.error_description)
+    }
+
+    this.token = res.access_token
+
+    const factoryProps = new solace.SolclientFactoryProperties()
+    factoryProps.profile = solace.SolclientFactoryProfiles.version10
+    solace.SolclientFactory.init(factoryProps)
+    solace.SolclientFactory.setLogLevel(this.options.logLevel)
+
+    this.session = solace.SolclientFactory.createSession(
+      Object.assign(
         {
-          headers: {
-            accept: 'application/json',
-            authorization: 'Basic ' + this.options.token
-          }
-        }
-      ).then(r => r.json())
-      if (res.meta?.error) throw res.meta.error
-      return res.data
-    } catch (e) {
-      const error = new Error(`Queue "${queueName}" could not be retrieved`)
-      error.code = 'GET_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: queueName }
-      error.reason = e
-      this.LOG.error(error)
-      throw error
-    }
+          url: this.options.credentials.endpoints['eventing-endpoint'].uri,
+          vpnName: this.options.credentials.vpn,
+          accessToken: this.token
+        },
+        this.options.session
+      )
+    )
+
+    this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
+      this._eventAck.emit(sessionEvent.correlationKey)
+    })
+    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, sessionEvent => {
+      this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
+    })
+
+    return new Promise((resolve, reject) => {
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
+        resolve()
+      })
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => {
+        reject(e)
+      })
+      try {
+        this.session.connect()
+      } catch (error) {
+        reject(error)
+      }
+    })
   }
 
-  async getQueues() {
-    this.LOG._info && this.LOG.info('Get queues')
-    try {
-      const res = await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues`, {
-        headers: {
-          accept: 'application/json',
-          authorization: 'Basic ' + this.options.token
-        }
-      }).then(r => r.json())
-      if (res.meta?.error) throw res.meta.error
-      return res.data
-    } catch (e) {
-      const error = new Error(`Queues could not be retrieved`)
-      error.code = 'GET_QUEUES_FAILED'
-      error.target = { kind: 'QUEUE' }
-      error.reason = e
-      this.LOG.error(error)
-      throw error
-    }
+  async handle(msg) {
+    if (msg.inbound) return super.handle(msg)
+    const _msg = this.message4(msg)
+    this.LOG._info && this.LOG.info('Emit', { topic: _msg.event })
+    const message = solace.SolclientFactory.createMessage()
+    message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event))
+    message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
+    message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT)
+    const correlationKey = cds.utils.uuid()
+    message.setCorrelationKey(correlationKey)
+    return new Promise((resolve, reject) => {
+      this._eventAck.once(correlationKey, () => {
+        this._eventRej.removeAllListeners(correlationKey)
+        resolve()
+      })
+      this._eventRej.once(correlationKey, () => {
+        this._eventAck.removeAllListeners(correlationKey)
+        reject()
+      })
+      this.session.send(message)
+    })
   }
 
-  async createQueue(queueName = this.queueName) {
-    this.LOG._info && this.LOG.info('Create queue', { queue: queueName })
-    try {
-      const queueConfig = (this.queueConfig && { ...this.queueConfig }) || {}
-      queueConfig.queueName = queueName
-      queueConfig.owner = this.options.owner
-      queueConfig.ingressEnabled = true
-      queueConfig.egressEnabled = true
-      if (queueConfig.deadMsgQueue)
-        queueConfig.deadMsgQueue = queueConfig.deadMsgQueue.replace(/\$namespace/g, this.namespace)
+  async startListening() {
+    if (!this._listenToAll.value && !this.subscribedTopics.size) return
 
-      const res = await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues`, {
+    await this._createQueueM()
+    await this._subscribeTopicsM()
+
+    this.options.consumer.queueDescriptor.name = this.options.queue.name
+
+    this.messageConsumer = this.session.createMessageConsumer(this.options.consumer)
+    this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
+      const event = message.getDestination().getName()
+      if (this.LOG._info) this.LOG.info('Received message', event)
+      const msg = normalizeIncomingMessage(message.getBinaryAttachment())
+      msg.event = event
+      try {
+        await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+        message.acknowledge()
+      } catch (e) {
+        e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
+        this.LOG.error(e)
+        // The error property `unrecoverable` is used for the outbox to mark unrecoverable errors.
+        // We can use the same here to properly reject the message.
+        if (
+          e.unrecoverable &&
+          this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.REJECTED)
+        )
+          return message.settle(solace.MessageOutcome.REJECTED)
+        if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
+          return message.settle(solace.MessageOutcome.FAILED)
+        // Nothing else we can do
+        message.acknowledge()
+      }
+    })
+    return new Promise((resolve, reject) => {
+      this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
+        if (this.LOG._info) this.LOG.info('Consumer connected')
+        resolve()
+      })
+
+      this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, () => {
+        this.LOG.error('Queue down', this.options.queue.name)
+        reject(new Error('Message Consumer failed to start.'))
+      })
+
+      this.messageConsumer.on(solace.MessageConsumerEventName.CONNECT_FAILED_ERROR, () => {
+        this.LOG.error('Could not connect to queue', this.options.queue.name)
+        reject(new Error('Message Consumer connection failed.'))
+      })
+      this.messageConsumer.connect()
+    })
+  }
+
+  async _createQueueM() {
+    try {
+      // name -> queueName
+      const body = { ...this.options.queue }
+      body.queueName ??= this.options.queue.name
+      delete body.name
+
+      // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
+      const res = await fetch(this._queues_uri, {
         method: 'POST',
-        body: JSON.stringify(queueConfig),
+        body: JSON.stringify(body),
         headers: {
           accept: 'application/json',
           'content-type': 'application/json',
           encoding: 'utf-8',
-          authorization: 'Basic ' + this.options.token
+          authorization: 'Bearer ' + this.token
         }
       }).then(r => r.json())
       if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
       if (res.statusCode === 201) return true
     } catch (e) {
-      const error = new Error(`Queue "${queueName}" could not be created`)
+      const error = new Error(`Queue "${this.options.queue.name}" could not be created`)
       error.code = 'CREATE_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: queueName }
+      error.target = { kind: 'QUEUE', queue: this.options.queue.name }
       error.reason = e
       this.LOG.error(error)
       throw error
     }
   }
-
-  async deleteQueue(queueName = this.queueName) {
-    this.LOG._info && this.LOG.info('Delete queue', { queue: queueName })
-    try {
-      await fetch(this.options.uri + `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues/${encodeURIComponent(queueName)}`, {
-        method: 'DELETE',
-        headers: {
-          accept: 'application/json',
-          authorization: 'Basic ' + this.options.token
-        }
-      }).then(r => r.json())
-    } catch (e) {
-      const error = new Error(`Queue "${queueName}" could not be deleted`)
-      error.code = 'DELETE_QUEUE_FAILED'
-      error.target = { kind: 'QUEUE', queue: queueName }
-      error.reason = e
-      this.LOG.error(error)
-      throw error
-    }
+  async _subscribeTopicsM() {
+    const existingTopics = await this._getSubscriptionsM()
+    const topics = [...this.subscribedTopics].map(kv => kv[0])
+    const newTopics = []
+    for (const t of topics) if (!existingTopics.includes(t)) newTopics.push(t)
+    const toBeDeletedTopics = []
+    for (const t of existingTopics) if (!topics.includes(t)) toBeDeletedTopics.push(t)
+    await Promise.all(toBeDeletedTopics.map(t => this._deleteSubscriptionM(t)))
+    await Promise.all(newTopics.map(t => this._createSubscriptionM(t)))
   }
 
-  async getSubscriptions(queueName = this.queueName) {
+  async _getSubscriptionsM() {
+    const queueName = this.options.queue.name
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
     try {
-      const res = await fetch(
-        this.options.uri +
-          `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
-        {
-          headers: {
-            accept: 'application/json',
-            authorization: 'Basic ' + this.options.token
-          }
+      const res = await fetch(this._subscriptions_uri, {
+        headers: {
+          accept: 'application/json',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
       if (res.meta?.error) throw res.meta.error
-      return res.data
+      return res.data.map(t => t.subscriptionTopic)
     } catch (e) {
       const error = new Error(`Subscriptions for "${queueName}" could not be retrieved`)
       error.code = 'GET_SUBSCRIPTIONS_FAILED'
@@ -134,153 +312,66 @@ class AEMManagement {
     }
   }
 
-  async createSubscription(topicPattern, queueName = this.queueName) {
-    this.LOG._info && this.LOG.info('Create subscription', { topic: topicPattern, queue: queueName })
+  async _createSubscriptionM(topicPattern) {
+    const queueName = this.options.queue.name
+    this.LOG._info &&
+      this.LOG.info('Create subscription', {
+        topic: topicPattern,
+        queue: queueName
+      })
     try {
-      const res = await fetch(
-        this.options.uri +
-          `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ subscriptionTopic: topicPattern }),
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json',
-            encoding: 'utf-8',
-            authorization: 'Basic ' + this.options.token
-          }
+      const res = await fetch(this._subscriptions_uri, {
+        method: 'POST',
+        body: JSON.stringify({ subscriptionTopic: topicPattern }),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
       if (res.meta?.error && res.meta.error.status !== 'ALREADY_EXISTS') throw res.meta.error
       if (res.statusCode === 201) return true
     } catch (e) {
       const error = new Error(`Subscription "${topicPattern}" could not be added to queue "${queueName}"`)
       error.code = 'CREATE_SUBSCRIPTION_FAILED'
-      error.target = { kind: 'SUBSCRIPTION', queue: queueName, topic: topicPattern }
+      error.target = {
+        kind: 'SUBSCRIPTION',
+        queue: queueName,
+        topic: topicPattern
+      }
       error.reason = e
       this.LOG.error(error)
       throw error
     }
   }
 
-  async deleteSubscription(topicPattern, queueName = this.queueName) {
-    this.LOG._info && this.LOG.info('Delete subscription', { topic: topicPattern, queue: queueName })
+  async _deleteSubscriptionM(topicPattern) {
+    const queueName = this.options.queue.name
+    this.LOG._info &&
+      this.LOG.info('Delete subscription', {
+        topic: topicPattern,
+        queue: queueName
+      })
     try {
-      await fetch(
-        this.options.uri +
-          `/SEMP/v2/config/msgVpns/${this.options.vpn}/queues/${encodeURIComponent(queueName)}/subscriptions/${encodeURIComponent(topicPattern)}`,
-        {
-          method: 'DELETE',
-          headers: {
-            accept: 'application/json',
-            authorization: 'Basic ' + this.options.token
-          }
+      await fetch(`${this._subscriptions_uri}/${encodeURIComponent(topicPattern)}`, {
+        method: 'DELETE',
+        headers: {
+          accept: 'application/json',
+          authorization: 'Bearer ' + this.token
         }
-      ).then(r => r.json())
+      }).then(r => r.json())
     } catch (e) {
       const error = new Error(`Subscription "${topicPattern}" could not be deleted from queue "${queueName}"`)
       error.code = 'DELETE_SUBSCRIPTION_FAILED'
-      error.target = { kind: 'SUBSCRIPTION', queue: queueName, topic: topicPattern }
+      error.target = {
+        kind: 'SUBSCRIPTION',
+        queue: queueName,
+        topic: topicPattern
+      }
       error.reason = e
       this.LOG.error(error)
       throw error
     }
-  }
-
-  async createQueueAndSubscriptions() {
-    this.LOG._info && this.LOG.info(`Create messaging artifacts`)
-
-    const created = await this.createQueue()
-    if (!created) {
-      // We need to make sure to only keep our own subscriptions
-      const resGet = await this.getSubscriptions()
-      if (Array.isArray(resGet)) {
-        const existingSubscriptions = resGet.map(s => s.subscriptionTopic)
-        const obsoleteSubs = existingSubscriptions.filter(s => !this.subscribedTopics.has(s))
-        const additionalSubs = [...this.subscribedTopics]
-          .map(kv => kv[0])
-          .filter(s => !existingSubscriptions.some(e => s === e))
-        const unchangedSubs = []
-        // eslint-disable-next-line no-unused-vars
-        for (const [s, _] of this.subscribedTopics) {
-          if (existingSubscriptions.some(e => s === e)) unchangedSubs.push(s)
-        }
-        this.LOG._info && this.LOG.info('Unchanged subscriptions', unchangedSubs)
-        await Promise.all([
-          ...obsoleteSubs.map(s => this.deleteSubscription(s)),
-          ...additionalSubs.map(async t => this.createSubscription(t))
-        ])
-        return
-      }
-    }
-    await Promise.all([...this.subscribedTopics].map(kv => kv[0]).map(t => this.createSubscription(t)))
-  }
-
-  async deploy() {
-    await this.createQueueAndSubscriptions()
-  }
-
-  async undeploy() {
-    this.LOG._info && this.LOG.info(`Delete messaging artifacts`)
-    await this.deleteQueue()
-  }
-}
-
-module.exports = class AdvancedEventMesh extends EnterpriseMessagingShared {
-
-  getClient() {
-    // not needed with cds >= 8.7.0
-    if (this.client) return this.client
-    const AMQPClient = require('@sap/cds/libx/_runtime/messaging/common-utils/AMQPClient')
-    this.client = new AMQPClient(this.getClientOptions())
-    return this.client
-  }
-
-  getClientOptions() {
-    const credentials = this.options.credentials
-    if (!credentials) throw new Error(requiredParams)
-    const uri = credentials.uri
-    return {
-    optionsAMQP: {
-      uri: [uri],
-      sasl: {
-        mechanism: 'PLAIN',
-        user: credentials.user,
-        password: credentials.password
-      }
-    },
-    prefix: { topic: 'topic://', queue: '' },
-    service: this
-  } 
-  }
-
-  getManagement() {
-    if (this.management) return this.management
-    const optsManagement = this.optionsManagement()
-    const queueConfig = this.queueConfig
-    const queueName = this.queueName
-    this.management = new AEMManagement({
-      optionsManagement: optsManagement,
-      queueConfig,
-      queueName,
-      subscribedTopics: this.subscribedTopics,
-      LOG: this.LOG
-    })
-    return this.management
-  }
-
-  optionsManagement() {
-    const management = this.options.credentials?.management
-    if (!management.uri || !management.user || !management.password || !management.vpn) {
-      throw new Error(requiredParams)
-    }
-    // TODO: real management APIs
-    const creds = {
-      uri: management.uri,
-      token: Buffer.from(management.user + ':' + management.password).toString('base64'),
-      vpn: this.options.credentials.vpn,
-      owner: this.options.credentials.user
-    }
-    return creds
   }
 }
