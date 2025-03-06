@@ -57,7 +57,7 @@ const _validateBroker = async mgmt_uri => {
     !creds.handshake.oa2 ||
     !creds.handshake.oa2.clientid ||
     !creds.handshake.oa2.clientsecret ||
-    !creds.handshake.oa2.tokenendpoint || //> REVISIT: tokenendpoint vs token_endpoint (see auth service)
+    !creds.handshake.oa2.tokenendpoint ||
     !creds.handshake.uri ||
     !creds.serviceinstanceid
   ) {
@@ -136,7 +136,6 @@ const getAppMetadata = () => {
 
 module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async init() {
-    // REVISIT: validate first then super.init()?
     await super.init()
 
     const { uri: mgmt_uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
