@@ -41,11 +41,9 @@
             "clientsecret": "<clientsecret>"
           },
           "endpoints": {
-            "eventing-endpoint": {
-              "uri": "<uri>"
-            },
-            "management-endpoint": {
-              "uri": "https://management-host:666"
+            "advanced-event-mesh": {
+              "uri": "https://management-host:666",
+              "smf_uri": "<uri>"
             }
           }
         },
