@@ -7,7 +7,7 @@ const AEM = 'SAP Integration Suite, advanced event mesh'
 const AEM_VAL = `${AEM} with plan "aem-validation-service"`
 const UPS_FORMAT = `{
   "authentication-service": {
-    "token_endpoint": "https://<host>/oauth2/token",
+    "tokenendpoint": "https://<host>/oauth2/token",
     "clientid": "<clientid>",
     "clientsecret": "<clientsecret>"
   },
@@ -26,7 +26,7 @@ const _validateAndFetchEndpoints = creds => {
   if (
     !creds ||
     !creds['authentication-service'] ||
-    !creds['authentication-service'].token_endpoint ||
+    !creds['authentication-service'].tokenendpoint ||
     !creds['authentication-service'].clientid ||
     !creds['authentication-service'].clientsecret ||
     !creds.endpoints ||
@@ -168,8 +168,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
     this._subscriptions_uri = `${this._queues_uri}/${encodeURIComponent(queueName)}/subscriptions`
 
-    const { token_endpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
-    const res = await fetch(token_endpoint, {
+    const { tokenendpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
+    const res = await fetch(tokenendpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
