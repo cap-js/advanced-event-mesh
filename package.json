@@ -22,7 +22,7 @@
     "solclientjs": "^10.17.1"
   },
   "peerDependencies": {
-    "@sap/cds": ">=7"
+    "@sap/cds": ">=8"
   },
   "devDependencies": {
     "@cap-js/advanced-event-mesh": "file:.",

@@ -14,7 +14,7 @@ const UPS_FORMAT = `{
   "endpoints": {
     "advanced-event-mesh": {
       "uri": "https://<host>:943/SEMP/v2/config",
-      "smf_uri": "https://<host>:443"
+      "smf_uri": "wss://<host>:443"
     }
   },
   "vpn": "<vpn>"
