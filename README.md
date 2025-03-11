@@ -45,6 +45,28 @@ You can create an SAP Integration Suite, advanced event mesh service with the fo
 
 For more details, please refer to the [messaging section](https://cap.cloud.sap/docs/node.js/messaging) of the CAP Node.js documentation.
 
+The broker must be created manually in SAP Integration Suite, advanced event mesh and trust to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services) must be established.
+For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/what-is-sap-integration-suite-advanced-event-mesh).
+
+The broker's credentials must be provided via a [user-provided service instance](https://docs.cloudfoundry.org/devguide/services/user-provided.html) in the following format:
+
+```jsonc
+{
+  "authentication-service": {
+    "tokenendpoint": "https://<host>/oauth2/token",
+    "clientid": "<clientid>",
+    "clientsecret": "<clientsecret>"
+  },
+  "endpoints": {
+    "advanced-event-mesh": {
+      "uri": "https://<host>:943/SEMP/v2/config",
+      "smf_uri": "https://<host>:443"
+    }
+  },
+  "vpn": "<vpn>"
+}
+```
+
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/cap-js/advanced-event-mesh/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
