@@ -180,10 +180,11 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         })
       }).then(r => r.json())
       if (res.error) throw new Error(`Could not fetch token for ${AEM}: ${res.error_description}`)
-      return res.access_token //> REVISIT: when do we refresh the token?
+      this.token_expires_in = res.expires_in
+      this.token = res.access_token //> REVISIT: when do we refresh the token?
     }
 
-    this.token = await _fetchToken()
+    await _fetchToken()
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
@@ -204,69 +205,59 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
     })
 
-    console.log('registering additional solace handlers')
-    this.session.on(solace.SessionEventCode.DISCONNECTED, sessionEvent => {
-      console.log('SOLACE DISCONNECTED')
+    this.session.on(solace.SessionEventCode.DISCONNECTED, _sessionEvent => {
+      this.LOG.error('SOLACE DISCONNECTED')
     })
 
-    this.session.on(solace.SessionEventCode.DOWN_ERROR, sessionEvent => {
-      console.log('SOLACE DOWN_ERROR')
+    this.session.on(solace.SessionEventCode.DOWN_ERROR, _sessionEvent => {
+      this.LOG.error('SOLACE DOWN_ERROR')
     })
 
-    this.session.on(solace.SessionEventCode.GUARANTEED_MESSAGE_PUBLISHER_DOWN, sessionEvent => {
-      console.log('SOLACE GUARANTEED_MESSAGE_PUBLISHER_DOWN')
+    this.session.on(solace.SessionEventCode.GUARANTEED_MESSAGE_PUBLISHER_DOWN, _sessionEvent => {
+      this.LOG.error('SOLACE GUARANTEED_MESSAGE_PUBLISHER_DOWN')
     })
 
-    this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, sessionEvent => {
-      console.log('SOLACE CONNECT_FAILED_ERROR')
+    this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, _sessionEvent => {
+      this.LOG.error('SOLACE CONNECT_FAILED_ERROR')
     })
 
-    this.session.on(solace.SessionEventCode.CAN_ACCEPT_DATA, sessionEvent => {
-      console.log('SOLACE CAN_ACCEPT_DATA')
-    })
-    
-    this.session.on(solace.SessionEventCode.PROPERTY_UPDATE_ERROR, sessionEvent => {
-      console.log('SOLACE PROPERTY_UPDATE_ERROR')
+    this.session.on(solace.SessionEventCode.PROVISION_ERROR, _sessionEvent => {
+      this.LOG.error('SOLACE PROVISION_ERROR')
     })
 
-    this.session.on(solace.SessionEventCode.PROVISION_ERROR, sessionEvent => {
-      console.log('SOLACE PROVISION_ERROR')
+    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, _sessionEvent => {
+      this.LOG.error('SOLACE REJECTED_MESSAGE_ERROR')
     })
 
-    this.session.on(solace.SessionEventCode.RECONNECTED_NOTICE, sessionEvent => {
-      console.log('SOLACE RECONNECTED_NOTICE')
+    this.session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, _sessionEvent => {
+      this.LOG.error('SOLACE SUBSCRIPTION_ERROR')
     })
 
-    this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, sessionEvent => {
-      console.log('SOLACE RECONNECTING_NOTICE')
+    this.session.on(solace.SessionEventCode.RECONNECTED_NOTICE, _sessionEvent => {
+      this.LOG._info && this.LOG.info('SOLACE RECONNECTED_NOTICE')
     })
 
-    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, sessionEvent => {
-      console.log('SOLACE REJECTED_MESSAGE_ERROR')
+    this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, async _sessionEvent => {
+      this.LOG._info && this.LOG.info('SOLACE RECONNECTING_NOTICE')
     })
 
-    this.session.on(solace.SessionEventCode.REPUBLISHING_UNACKED_MESSAGES, sessionEvent => {
-      console.log('SOLACE REPUBLISHING_UNACKED_MESSAGES')
-    })
-
-    this.session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, sessionEvent => {
-      console.log('SOLACE SUBSCRIPTION_ERROR')
-    })
-
-    this.session.on(solace.SessionEventCode.UNSUBSCRIBE_TE_TOPIC_ERROR, sessionEvent => {
-      console.log('SOLACE UNSUBSCRIBE_TE_TOPIC_ERROR')
-    })
-
-    this.session.on(solace.SessionEventCode.VIRTUALROUTER_NAME_CHANGED, sessionEvent => {
-      console.log('SOLACE VIRTUALROUTER_NAME_CHANGED')
-    })
-    
+    const _updateToken = async () => {
+      let waitingTime = this.token_expires_in * 1000
+      setTimeout(async () => {
+        await _fetchToken()
+        this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
+        _updateToken()
+      }, waitingTime)
+    }
 
     return new Promise((resolve, reject) => {
-      this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
+      this.session.on(solace.SessionEventCode.UP_NOTICE, async () => {
+        this.LOG._info && this.LOG.info('UP_NOTICE')
+        _updateToken()
         resolve()
       })
       this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => {
+        this.LOG.error('CONNECT_FAILED_ERROR', e)
         reject(e)
       })
       try {
