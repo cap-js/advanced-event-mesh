@@ -247,7 +247,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         await _fetchToken()
         this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
         _updateToken()
-      }, waitingTime)
+      }, waitingTime).unref()
     }
 
     return new Promise((resolve, reject) => {
