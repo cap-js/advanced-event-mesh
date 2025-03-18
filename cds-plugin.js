@@ -251,13 +251,13 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     }
 
     return new Promise((resolve, reject) => {
-      this.session.on(solace.SessionEventCode.UP_NOTICE, async () => {
-        this.LOG._info && this.LOG.info('UP_NOTICE')
+      this.session.on(solace.SessionEventCode.UP_NOTICE, async sessionEvent => {
+        this.LOG._info && this.LOG.info('UP_NOTICE', sessionEvent)
         _updateToken()
         resolve()
       })
-      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => {
-        this.LOG.error('CONNECT_FAILED_ERROR:', e)
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, sessionEvent => {
+        this.LOG.error('CONNECT_FAILED_ERROR:', sessionEvent)
         reject(e)
       })
       try {
