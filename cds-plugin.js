@@ -206,7 +206,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
 
     this.session.on(solace.SessionEventCode.DISCONNECTED, _sessionEvent => {
-      this.LOG.error('SOLACE DISCONNECTED')
+      this.LOG_info && this.LOG.info('SOLACE DISCONNECTED')
     })
 
     this.session.on(solace.SessionEventCode.DOWN_ERROR, _sessionEvent => {
