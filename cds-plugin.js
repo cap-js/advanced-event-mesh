@@ -237,7 +237,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this.LOG._info && this.LOG.info('SOLACE RECONNECTED_NOTICE:', sessionEvent)
     })
 
-    this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, async sessionEvent => {
+    this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, sessionEvent => {
       this.LOG._info && this.LOG.info('SOLACE RECONNECTING_NOTICE:', sessionEvent)
     })
 
