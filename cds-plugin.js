@@ -251,7 +251,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     }
 
     return new Promise((resolve, reject) => {
-      this.session.on(solace.SessionEventCode.UP_NOTICE, async sessionEvent => {
+      this.session.on(solace.SessionEventCode.UP_NOTICE, sessionEvent => {
         this.LOG._info && this.LOG.info('UP_NOTICE', sessionEvent)
         _scheduleUpdateToken()
         resolve()
