@@ -241,19 +241,19 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this.LOG._info && this.LOG.info('SOLACE RECONNECTING_NOTICE:', sessionEvent)
     })
 
-    const _updateToken = async () => {
+    const _scheduleUpdateToken = async () => {
       let waitingTime = this.token_expires_in * 1000
       setTimeout(async () => {
         await _fetchToken()
         this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
-        _updateToken()
+        _scheduleUpdateToken()
       }, waitingTime).unref()
     }
 
     return new Promise((resolve, reject) => {
       this.session.on(solace.SessionEventCode.UP_NOTICE, async sessionEvent => {
         this.LOG._info && this.LOG.info('UP_NOTICE', sessionEvent)
-        _updateToken()
+        _scheduleUpdateToken()
         resolve()
       })
       this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, sessionEvent => {
