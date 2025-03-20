@@ -242,7 +242,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
 
     const _scheduleUpdateToken = async () => {
-      let waitingTime = this.token_expires_in * 1000
+      const waitingTime = (Math.max(this.token_expires_in - 10, 0)) * 1000
       setTimeout(async () => {
         await _fetchToken()
         this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
