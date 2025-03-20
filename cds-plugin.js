@@ -241,7 +241,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this.LOG._info && this.LOG.info('SOLACE RECONNECTING_NOTICE:', sessionEvent)
     })
 
-    const _scheduleUpdateToken = async () => {
+    const _scheduleUpdateToken = () => {
       const waitingTime = (Math.max(this.token_expires_in - 10, 0)) * 1000
       setTimeout(async () => {
         await _fetchToken()
