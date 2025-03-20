@@ -168,15 +168,20 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
     this._subscriptions_uri = `${this._queues_uri}/${encodeURIComponent(queueName)}/subscriptions`
 
-    const { tokenendpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
+    // TODO: support combinations:
+    // - tokenendpoint, clientid, clientsecret
+    // - service-label + api
+    const { tokenendpoint, clientid, clientsecret, api } = this.options.credentials['authentication-service']
+    const body = {
+      grant_type: 'client_credentials',
+      client_id: clientid,
+      client_secret: clientsecret
+    }
+    if (api) body.resource = [`urn:sap:identity:application:tenant:name:${api}`]
     const res = await fetch(tokenendpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: clientid,
-        client_secret: clientsecret // scope?
-      })
+      body: new URLSearchParams(body)
     }).then(r => r.json())
     if (res.error) throw new Error(`Could not fetch token for ${AEM}: ${res.error_description}`)
     this.token = res.access_token //> REVISIT: when do we refresh the token?
