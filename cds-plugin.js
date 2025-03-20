@@ -205,9 +205,19 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
     })
 
-    this.session.on(solace.SessionEventCode.DISCONNECTED, sessionEvent => {
-      this.LOG_info && this.LOG.info('SOLACE DISCONNECTED:', sessionEvent)
-    })
+    if (this.LOG._info) {
+      this.session.on(solace.SessionEventCode.DISCONNECTED, sessionEvent => {
+        this.LOG.info('SOLACE DISCONNECTED:', sessionEvent)
+      })
+
+      this.session.on(solace.SessionEventCode.RECONNECTED_NOTICE, sessionEvent => {
+        this.LOG.info('SOLACE RECONNECTED_NOTICE:', sessionEvent)
+      })
+
+      this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, sessionEvent => {
+        this.LOG.info('SOLACE RECONNECTING_NOTICE:', sessionEvent)
+      })
+    }
 
     this.session.on(solace.SessionEventCode.DOWN_ERROR, sessionEvent => {
       this.LOG.error('SOLACE DOWN_ERROR:', sessionEvent)
@@ -231,14 +241,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     this.session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, sessionEvent => {
       this.LOG.error('SOLACE SUBSCRIPTION_ERROR:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.RECONNECTED_NOTICE, sessionEvent => {
-      this.LOG._info && this.LOG.info('SOLACE RECONNECTED_NOTICE:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, sessionEvent => {
-      this.LOG._info && this.LOG.info('SOLACE RECONNECTING_NOTICE:', sessionEvent)
     })
 
     const _scheduleUpdateToken = () => {
