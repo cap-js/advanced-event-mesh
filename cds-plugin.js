@@ -347,6 +347,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       // name -> queueName
       const body = { ...this.options.queue }
       body.queueName ??= this.options.queue.name
+      body.permission ??= 'consume'
       delete body.name
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
