@@ -97,7 +97,7 @@ const _JSONorString = string => {
   }
 }
 
-async function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
+function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
   return new Promise((resolve, reject) => {
     const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
     if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
