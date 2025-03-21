@@ -101,7 +101,7 @@ async function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate:
   return new Promise((resolve, reject) => {
     const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
     if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
-    const options = { headers: { 'content-type': 'application/x-www-form-urlencoded' } }
+    const options = { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' } }
     // certificate or secret?
     if (cert) options.agent = new https.Agent({ cert, key })
     else body.client_secret = clientsecret
@@ -110,17 +110,11 @@ async function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate:
       const chunks = []
       res.on('data', chunk => chunks.push(chunk))
       res.on('end', () => {
-        const { statusCode, statusMessage } = res
+        const { statusCode: code, statusMessage: msg } = res
         let body = Buffer.concat(chunks).toString()
         if (res.headers['content-type']?.match(/json/)) body = JSON.parse(body)
         if (res.statusCode >= 400) {
-          // prettier-ignore
-          const err = new Error(`Request failed with${statusMessage ? `: ${statusCode} - ${statusMessage}` : ` status ${statusCode}`}`)
-          err.request = { method: options.method, tokenendpoint, headers: options.headers, body: body }
-          if (err.request.headers.authorization)
-            err.request.headers.authorization = err.request.headers.authorization.split(' ')[0] + ' ***'
-          err.response = { statusCode, statusMessage, headers: res.headers, body }
-          reject(err)
+          reject(new Error(`Request failed with${msg ? `: ${code} - ${msg}` : ` status ${code}`}`))
         } else {
           resolve(body)
         }
