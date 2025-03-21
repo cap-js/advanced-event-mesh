@@ -2,14 +2,18 @@ const cds = require('@sap/cds')
 
 const solace = require('solclientjs')
 const EventEmitter = require('events')
+const https = require('https')
 
 const AEM = 'SAP Integration Suite, advanced event mesh'
 const AEM_VAL = `${AEM} with plan "aem-validation-service"`
 const UPS_FORMAT = `{
   "authentication-service": {
     "tokenendpoint": "https://<host>/oauth2/token",
-    "clientid": "<clientid>",
-    "clientsecret": "<clientsecret>"
+    "clientid": "<client id>",
+    "clientsecret": "<client secret>"
+    // OR
+    "service-label": "<label of authentication service>",
+    "api": "<api>"
   },
   "endpoints": {
     "advanced-event-mesh": {
@@ -20,20 +24,25 @@ const UPS_FORMAT = `{
   "vpn": "<vpn>"
 }`
 
+const _getCredsFromVcap = test => {
+  const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
+  if (!vcap) throw new Error('No VCAP_SERVICES in process environment')
+  for (const name in vcap) {
+    const srv = vcap[name][0]
+    if (test(srv)) return srv.credentials
+  }
+}
+
 const _validateAndFetchEndpoints = creds => {
   const MSG = `Missing or malformed credentials for ${AEM}.\n\nBind your app to a user-provided service with name "advanced-event-mesh" and credentials in the following format:\n${UPS_FORMAT}`
 
-  if (
-    !creds ||
-    !creds['authentication-service'] ||
-    !creds['authentication-service'].tokenendpoint ||
-    !creds['authentication-service'].clientid ||
-    !creds['authentication-service'].clientsecret ||
-    !creds.endpoints ||
-    !creds.vpn
-  ) {
+  if (!creds || !creds['authentication-service'] || !creds.endpoints || !creds.vpn) throw new Error(MSG)
+
+  const auth_srv = creds['authentication-service']
+  if ((!auth_srv.tokenendpoint && !auth_srv['service-label']) || (auth_srv.tokenendpoint && auth_srv['service-label']))
     throw new Error(MSG)
-  }
+  if (auth_srv.tokenendpoint && (!auth_srv.clientid || !auth_srv.clientsecret)) throw new Error(MSG)
+  if (auth_srv['service-label'] && !auth_srv.api) throw new Error(MSG)
 
   const first = creds.endpoints[Object.keys(creds.endpoints)[0]]
   if (!first || !first.uri || !first.smf_uri) throw new Error(MSG)
@@ -42,14 +51,8 @@ const _validateAndFetchEndpoints = creds => {
 }
 
 const _validateBroker = async mgmt_uri => {
-  // I'd rather not require users to specify _another_ cds.requires service
-  const creds = (() => {
-    const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
-    for (const name in vcap) {
-      const srv = vcap[name][0]
-      if (srv.plan === 'aem-validation-service-plan') return srv.credentials
-    }
-  })()
+  // via VCAP_SERVICES to avoid specifying _another_ cds.requires service
+  const creds = _getCredsFromVcap(srv => srv.plan === 'aem-validation-service-plan')
 
   if (
     !creds ||
@@ -92,6 +95,41 @@ const _JSONorString = string => {
   } catch {
     return string
   }
+}
+
+async function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
+  return new Promise((resolve, reject) => {
+    const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
+    if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
+    const options = { headers: { 'content-type': 'application/x-www-form-urlencoded' } }
+    // certificate or secret?
+    if (cert) options.agent = new https.Agent({ cert, key })
+    else body.client_secret = clientsecret
+    const data = Object.keys(body).reduce((acc, cur) => ((acc += (acc ? '&' : '') + cur + '=' + body[cur]), acc), '')
+    const req = https.request(tokenendpoint, options, res => {
+      const chunks = []
+      res.on('data', chunk => chunks.push(chunk))
+      res.on('end', () => {
+        const { statusCode, statusMessage } = res
+        let body = Buffer.concat(chunks).toString()
+        if (res.headers['content-type']?.match(/json/)) body = JSON.parse(body)
+        if (res.statusCode >= 400) {
+          // prettier-ignore
+          const err = new Error(`Request failed with${statusMessage ? `: ${statusCode} - ${statusMessage}` : ` status ${statusCode}`}`)
+          err.request = { method: options.method, tokenendpoint, headers: options.headers, body: body }
+          if (err.request.headers.authorization)
+            err.request.headers.authorization = err.request.headers.authorization.split(' ')[0] + ' ***'
+          err.response = { statusCode, statusMessage, headers: res.headers, body }
+          reject(err)
+        } else {
+          resolve(body)
+        }
+      })
+    })
+    req.on('error', reject)
+    req.write(data)
+    req.end()
+  })
 }
 
 // Some messaging systems don't adhere to the standard that the payload has a `data` property.
@@ -168,18 +206,12 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
     this._subscriptions_uri = `${this._queues_uri}/${encodeURIComponent(queueName)}/subscriptions`
 
-    const { tokenendpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
-    const res = await fetch(tokenendpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: clientid,
-        client_secret: clientsecret // scope?
-      })
-    }).then(r => r.json())
-    if (res.error) throw new Error(`Could not fetch token for ${AEM}: ${res.error_description}`)
-    this.token = res.access_token //> REVISIT: when do we refresh the token?
+    let auth_srv = this.options.credentials['authentication-service']
+    if ('service-label' in auth_srv) {
+      const creds = _getCredsFromVcap(srv => srv.label === auth_srv['service-label'])
+      auth_srv = { ...auth_srv, ...creds }
+    }
+    this.token = await _fetchToken(auth_srv)
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
