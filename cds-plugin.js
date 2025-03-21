@@ -181,17 +181,21 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     if (res.error) throw new Error(`Could not fetch token for ${AEM}: ${res.error_description}`)
     this.token = res.access_token //> REVISIT: when do we refresh the token?
 
-    const factoryProps = new solace.SolclientFactoryProperties()
-    factoryProps.profile = solace.SolclientFactoryProfiles.version10
-    solace.SolclientFactory.init(factoryProps)
-    solace.SolclientFactory.setLogLevel(this.options.logLevel)
-
-    this.session = solace.SolclientFactory.createSession(
-      Object.assign(
-        { url: smf_uri, vpnName: this.options.credentials.vpn, accessToken: this.token },
-        this.options.session
-      )
+    const solclientFactoryProperties = Object.assign(
+      {
+        logLevel: this.options.logLevel != null ? this.options.logLevel : this.LOG.level,
+        logger: Object.assign(this.LOG, { fatal: this.LOG.error }),
+        profile: solace.SolclientFactoryProfiles.version10
+      },
+      this.options.clientFactory
     )
+    solace.SolclientFactory.init(new solace.SolclientFactoryProperties(solclientFactoryProperties))
+
+    const sessionProperties = Object.assign(
+      { url: smf_uri, vpnName: this.options.credentials.vpn, accessToken: this.token },
+      this.options.session
+    )
+    this.session = solace.SolclientFactory.createSession(sessionProperties)
 
     this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
       this._eventAck.emit(sessionEvent.correlationKey)
