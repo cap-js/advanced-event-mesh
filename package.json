@@ -34,6 +34,12 @@
       "kinds": {
         "advanced-event-mesh": {
           "impl": "@cap-js/advanced-event-mesh",
+          "outbox": true,
+          "vcap": {
+            "name": "advanced-event-mesh"
+          },
+          "subscribePrefix": "",
+          "publishPrefix": "",
           "session": {
             "authenticationScheme": "AuthenticationScheme_oauth2",
             "publisherProperties": {
@@ -55,13 +61,6 @@
               1,
               3
             ]
-          },
-          "logLevel": 1,
-          "outbox": true,
-          "subscribePrefix": "",
-          "publishPrefix": "",
-          "vcap": {
-            "name": "advanced-event-mesh"
           }
         }
       }
