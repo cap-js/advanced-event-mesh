@@ -205,42 +205,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
     })
 
-    this.session.on(solace.SessionEventCode.DISCONNECTED, sessionEvent => {
-      this.LOG._info && this.LOG.info('SOLACE DISCONNECTED:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.RECONNECTED_NOTICE, sessionEvent => {
-      this.LOG._info && this.LOG.info('SOLACE RECONNECTED_NOTICE:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.RECONNECTING_NOTICE, sessionEvent => {
-      this.LOG._info && this.LOG.info('SOLACE RECONNECTING_NOTICE:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.DOWN_ERROR, sessionEvent => {
-      this.LOG.error('SOLACE DOWN_ERROR:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.GUARANTEED_MESSAGE_PUBLISHER_DOWN, sessionEvent => {
-      this.LOG.error('SOLACE GUARANTEED_MESSAGE_PUBLISHER_DOWN:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, sessionEvent => {
-      this.LOG.error('SOLACE CONNECT_FAILED_ERROR:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.PROVISION_ERROR, sessionEvent => {
-      this.LOG.error('SOLACE PROVISION_ERROR:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.REJECTED_MESSAGE_ERROR, sessionEvent => {
-      this.LOG.error('SOLACE REJECTED_MESSAGE_ERROR:', sessionEvent)
-    })
-
-    this.session.on(solace.SessionEventCode.SUBSCRIPTION_ERROR, sessionEvent => {
-      this.LOG.error('SOLACE SUBSCRIPTION_ERROR:', sessionEvent)
-    })
-
     const _scheduleUpdateToken = () => {
       const waitingTime = (Math.max(this.token_expires_in - 10, 0)) * 1000
       setTimeout(async () => {
