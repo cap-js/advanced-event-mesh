@@ -186,17 +186,21 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     await _fetchToken()
 
-    const factoryProps = new solace.SolclientFactoryProperties()
-    factoryProps.profile = solace.SolclientFactoryProfiles.version10
-    solace.SolclientFactory.init(factoryProps)
-    solace.SolclientFactory.setLogLevel(this.options.logLevel)
-
-    this.session = solace.SolclientFactory.createSession(
-      Object.assign(
-        { url: smf_uri, vpnName: this.options.credentials.vpn, accessToken: this.token },
-        this.options.session
-      )
+    const solclientFactoryProperties = Object.assign(
+      {
+        logLevel: this.options.logLevel != null ? this.options.logLevel : Math.max(this.LOG.level - 1, 1),
+        logger: Object.assign(this.LOG, { fatal: this.LOG.error }),
+        profile: solace.SolclientFactoryProfiles.version10
+      },
+      this.options.clientFactory
     )
+    solace.SolclientFactory.init(new solace.SolclientFactoryProperties(solclientFactoryProperties))
+
+    const sessionProperties = Object.assign(
+      { url: smf_uri, vpnName: this.options.credentials.vpn, accessToken: this.token },
+      this.options.session
+    )
+    this.session = solace.SolclientFactory.createSession(sessionProperties)
 
     this.session.on(solace.SessionEventCode.ACKNOWLEDGED_MESSAGE, sessionEvent => {
       this._eventAck.emit(sessionEvent.correlationKey)
