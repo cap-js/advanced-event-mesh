@@ -188,7 +188,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     const solclientFactoryProperties = Object.assign(
       {
-        logLevel: this.options.logLevel != null ? this.options.logLevel : this.LOG.level,
+        logLevel: this.options.logLevel != null ? this.options.logLevel : Math.max(this.LOG.level - 1, 1),
         logger: Object.assign(this.LOG, { fatal: this.LOG.error }),
         profile: solace.SolclientFactoryProfiles.version10
       },
