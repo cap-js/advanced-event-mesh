@@ -38,7 +38,7 @@ const _validateAndFetchEndpoints = creds => {
   const auth_srv = creds['authentication-service']
   if ((!auth_srv.tokenendpoint && !auth_srv['service-label']) || (auth_srv.tokenendpoint && auth_srv['service-label']))
     throw new Error(MSG)
-  if (auth_srv.tokenendpoint && (!auth_srv.clientid || !auth_srv.clientsecret)) throw new Error(MSG)
+  if (auth_srv.tokenendpoint && (!auth_srv.clientid || (!auth_srv.clientsecret && (!auth_srv.certificate || !auth_srv.key)))) throw new Error(MSG)
   if (auth_srv['service-label'] && !auth_srv.api) throw new Error(MSG)
 
   const first = creds.endpoints[Object.keys(creds.endpoints)[0]]
