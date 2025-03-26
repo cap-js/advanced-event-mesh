@@ -212,6 +212,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const _scheduleUpdateToken = () => {
       const waitingTime = (Math.max(this.token_expires_in - 10, 0)) * 1000
       setTimeout(async () => {
+        this.LOG._info && this.LOG.info('Fetching fresh token')
         await _fetchToken()
         this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
         _scheduleUpdateToken()
@@ -225,7 +226,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       })
       this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, sessionEvent => {
         this.LOG.error('CONNECT_FAILED_ERROR:', sessionEvent)
-        reject(e)
+        reject(sessionEvent)
       })
       try {
         this.session.connect()
@@ -294,7 +295,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     })
     return new Promise((resolve, reject) => {
       this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
-        if (this.LOG._info) this.LOG.info('Consumer connected')
+        this.LOG._info && this.LOG.info('Consumer connected')
         resolve()
       })
       this.messageConsumer.on(solace.MessageConsumerEventName.DOWN, () => {
@@ -314,7 +315,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       // name -> queueName
       const body = { ...this.options.queue }
       body.queueName ??= this.options.queue.name
-      body.permission ??= 'consume'
       delete body.name
 
       // https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue
