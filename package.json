@@ -47,6 +47,7 @@
           },
           "queue": {
             "queueName": "$appId",
+            "permission": "consume",
             "ingressEnabled": true,
             "egressEnabled": true
           },
