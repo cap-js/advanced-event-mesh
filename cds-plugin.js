@@ -100,12 +100,13 @@ const _validateBroker = async mgmt_uri => {
 
   const { access_token: validationToken } = await _fetchToken(creds.handshake.oa2)
 
-  const validatationRes = await fetch(creds.handshake.uri, {
+  const res = await fetch(creds.handshake.uri, {
     method: 'POST',
     body: JSON.stringify({ hostName: mgmt_uri.match(/https?:\/\/(.*):.*/)[1] }),
     headers: { Authorization: 'Bearer ' + validationToken }
   })
-  if (validatationRes.status !== 200) throw new Error(`${AEM}: The provided VMR is not provisioned via AEM`)
+  if (res.status === 500) throw new Error(`${AEM}: Error during VMR validation: 500 - ${res.statusText}`)
+  if (res.status !== 200) throw new Error(`${AEM}: The provided VMR is not provisioned via AEM`)
 }
 
 const _JSONorString = string => {
@@ -194,6 +195,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     if ('service-label' in auth_srv) {
       const creds = _getCredsFromVcap(srv => srv.label === auth_srv['service-label'])
       auth_srv = { ...auth_srv, ...creds }
+      auth_srv.tokenendpoint ??= auth_srv.url + '/oauth2/token'
     }
     const { access_token, expires_in } = await _fetchToken(auth_srv)
     this.token = access_token
