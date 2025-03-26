@@ -38,13 +38,47 @@ const _validateAndFetchEndpoints = creds => {
   const auth_srv = creds['authentication-service']
   if ((!auth_srv.tokenendpoint && !auth_srv['service-label']) || (auth_srv.tokenendpoint && auth_srv['service-label']))
     throw new Error(MSG)
-  if (auth_srv.tokenendpoint && (!auth_srv.clientid || (!auth_srv.clientsecret && (!auth_srv.certificate || !auth_srv.key)))) throw new Error(MSG)
+  if (
+    auth_srv.tokenendpoint &&
+    (!auth_srv.clientid || (!auth_srv.clientsecret && (!auth_srv.certificate || !auth_srv.key)))
+  ) {
+    throw new Error(MSG)
+  }
   if (auth_srv['service-label'] && !auth_srv.api) throw new Error(MSG)
 
   const first = creds.endpoints[Object.keys(creds.endpoints)[0]]
   if (!first || !first.uri || !first.smf_uri) throw new Error(MSG)
 
   return first
+}
+
+function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
+  return new Promise((resolve, reject) => {
+    const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
+    if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
+    const options = { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' } }
+    // certificate or secret?
+    if (cert) options.agent = new https.Agent({ cert, key })
+    else body.client_secret = clientsecret
+    const data = Object.keys(body).reduce((acc, cur) => ((acc += (acc ? '&' : '') + cur + '=' + body[cur]), acc), '')
+    const req = https.request(tokenendpoint, options, res => {
+      const chunks = []
+      res.on('data', chunk => chunks.push(chunk))
+      res.on('end', () => {
+        const { statusCode: code, statusMessage: msg } = res
+        let body = Buffer.concat(chunks).toString()
+        if (res.headers['content-type']?.match(/json/)) body = JSON.parse(body)
+        if (res.statusCode >= 400) {
+          reject(new Error(`Token request failed with${msg ? `: ${code} - ${msg}` : ` status ${code}`}`))
+        } else {
+          resolve(body)
+        }
+      })
+    })
+    req.on('error', reject)
+    req.write(data)
+    req.end()
+  })
 }
 
 const _validateBroker = async mgmt_uri => {
@@ -64,19 +98,7 @@ const _validateBroker = async mgmt_uri => {
     throw new Error(`Missing credentials for ${AEM_VAL}.\n\nYou need to create a service binding.`)
   }
 
-  const validationTokenRes = await fetch(creds.handshake.oa2.tokenendpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: creds.handshake.oa2.clientid,
-      client_secret: creds.handshake.oa2.clientsecret
-    })
-  }).then(r => r.json())
-
-  if (validationTokenRes.error)
-    throw new Error(`Could not fetch token for ${AEM_VAL}: ${validationTokenRes.error_description}`)
-  const validationToken = validationTokenRes.access_token
+  const { access_token: validationToken } = await _fetchToken(creds.handshake.oa2)
 
   const validatationRes = await fetch(creds.handshake.uri, {
     method: 'POST',
@@ -92,38 +114,6 @@ const _JSONorString = string => {
   } catch {
     return string
   }
-}
-
-function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
-  const that = this
-  return new Promise((resolve, reject) => {
-    const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
-    if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
-    const options = { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' } }
-    // certificate or secret?
-    if (cert) options.agent = new https.Agent({ cert, key })
-    else body.client_secret = clientsecret
-    const data = Object.keys(body).reduce((acc, cur) => ((acc += (acc ? '&' : '') + cur + '=' + body[cur]), acc), '')
-    const req = https.request(tokenendpoint, options, res => {
-      const chunks = []
-      res.on('data', chunk => chunks.push(chunk))
-      res.on('end', () => {
-        const { statusCode: code, statusMessage: msg } = res
-        let body = Buffer.concat(chunks).toString()
-        if (res.headers['content-type']?.match(/json/)) body = JSON.parse(body)
-        if (res.statusCode >= 400) {
-          reject(new Error(`Request failed with${msg ? `: ${code} - ${msg}` : ` status ${code}`}`))
-        } else {
-          that.token = res.access_token
-          that.token_expires_in = res.expires_in
-          resolve(body)
-        }
-      })
-    })
-    req.on('error', reject)
-    req.write(data)
-    req.end()
-  })
 }
 
 // Some messaging systems don't adhere to the standard that the payload has a `data` property.
@@ -205,7 +195,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       const creds = _getCredsFromVcap(srv => srv.label === auth_srv['service-label'])
       auth_srv = { ...auth_srv, ...creds }
     }
-    await _fetchToken(auth_srv)
+    const { access_token, expires_in } = await _fetchToken(auth_srv)
+    this.token = access_token
+    this.token_expires_in = expires_in
 
     const solclientFactoryProperties = Object.assign(
       {
@@ -234,9 +226,15 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       const waitingTime = Math.max(this.token_expires_in - 10, 0) * 1000
       setTimeout(async () => {
         this.LOG._info && this.LOG.info('Fetching fresh token')
-        await _fetchToken()
-        this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
-        _scheduleUpdateToken()
+        try {
+          const { access_token, expires_in } = await _fetchToken(auth_srv)
+          this.token = access_token
+          this.token_expires_in = expires_in
+          this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
+          _scheduleUpdateToken()
+        } catch (error) {
+          // TODO: What to do here?
+        }
       }, waitingTime).unref()
     }
 
