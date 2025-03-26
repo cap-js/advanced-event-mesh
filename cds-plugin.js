@@ -222,8 +222,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
     })
 
-    const _scheduleUpdateToken = () => {
-      const waitingTime = Math.max(this.token_expires_in - 10, 0) * 1000
+    const _scheduleUpdateToken = waitingTime => {
+      waitingTime ??= Math.max(this.token_expires_in - 10, 0) * 1000
       setTimeout(async () => {
         this.LOG._info && this.LOG.info('Fetching fresh token')
         try {
@@ -233,7 +233,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
           this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
           _scheduleUpdateToken()
         } catch (error) {
-          // TODO: What to do here?
+          this.LOG.error('Could not fetch fresh token:', error)
+          _scheduleUpdateToken(10 * 1000)
         }
       }, waitingTime).unref()
     }
