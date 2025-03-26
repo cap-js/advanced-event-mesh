@@ -38,8 +38,6 @@
           "vcap": {
             "name": "advanced-event-mesh"
           },
-          "subscribePrefix": "",
-          "publishPrefix": "",
           "session": {
             "authenticationScheme": "AuthenticationScheme_oauth2",
             "publisherProperties": {
