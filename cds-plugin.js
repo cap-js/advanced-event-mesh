@@ -95,6 +95,7 @@ const _JSONorString = string => {
 }
 
 function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
+  const that = this
   return new Promise((resolve, reject) => {
     const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
     if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
@@ -113,6 +114,8 @@ function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert,
         if (res.statusCode >= 400) {
           reject(new Error(`Request failed with${msg ? `: ${code} - ${msg}` : ` status ${code}`}`))
         } else {
+          that.token = res.access_token
+          that.token_expires_in = res.expires_in
           resolve(body)
         }
       })
@@ -202,7 +205,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       const creds = _getCredsFromVcap(srv => srv.label === auth_srv['service-label'])
       auth_srv = { ...auth_srv, ...creds }
     }
-    this.token = await _fetchToken(auth_srv)
+    await _fetchToken(auth_srv)
 
     const factoryProps = new solace.SolclientFactoryProperties()
     factoryProps.profile = solace.SolclientFactoryProfiles.version10
@@ -223,11 +226,22 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
     })
 
+    const _scheduleUpdateToken = () => {
+      const waitingTime = Math.max(this.token_expires_in - 10, 0) * 1000
+      setTimeout(async () => {
+        await _fetchToken()
+        this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
+        _scheduleUpdateToken()
+      }, waitingTime).unref()
+    }
+
     return new Promise((resolve, reject) => {
       this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
+        _scheduleUpdateToken()
         resolve()
       })
-      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, e => {
+      this.session.on(solace.SessionEventCode.CONNECT_FAILED_ERROR, sessionEvent => {
+        this.LOG.error('CONNECT_FAILED_ERROR:', sessionEvent)
         reject(e)
       })
       try {

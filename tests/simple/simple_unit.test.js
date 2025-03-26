@@ -36,6 +36,9 @@ jest.mock('solclientjs', () => {
           expect(opts.customConsumerOpt).toBe(true)
           return c
         }
+        s.updateAuthenticationOnReconnect = jest.fn(opts => {
+          expect(opts.accessToken).toBeDefined()
+        })
         c.connect = () => {
           c.emit('UP')
         }
@@ -91,7 +94,7 @@ jest.mock('solclientjs', () => {
 global.fetch = jest.fn((url, opts) => {
   if (url === '<tokenendpoint>') {
     return Promise.resolve({
-      json: () => Promise.resolve({ access_token: '<sampleToken>' })
+      json: () => Promise.resolve({ access_token: '<sampleToken>', expires_in: 1 })
     })
   } else if (!opts.method && url === 'https://management-host:666/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
     return Promise.resolve({
@@ -228,5 +231,12 @@ describe('simple unit tests', () => {
         }
       }
     })
+  })
+
+  test('fresh new token', done => {
+    setTimeout(() => {
+      expect(messaging.session.updateAuthenticationOnReconnect).toHaveBeenCalled()
+      done()
+    }, 1000)
   })
 })
