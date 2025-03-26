@@ -56,9 +56,6 @@ The broker's credentials must be provided via a [user-provided service instance]
     "tokenendpoint": "https://<host>/oauth2/token",
     "clientid": "<client id>",
     "clientsecret": "<client secret>"
-    // OR
-    "service-label": "<label of authentication service>",
-    "api": "<api>"
   },
   "endpoints": {
     "advanced-event-mesh": {
