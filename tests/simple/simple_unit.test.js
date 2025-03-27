@@ -125,11 +125,7 @@ describe('simple unit tests', () => {
   cds.test()
 
   beforeAll(async () => {
-    try {
-      messaging = await cds.connect.to('messaging')
-    } catch (error) {
-      debugger
-    }
+    messaging = await cds.connect.to('messaging')
   })
 
   test('emit from app service', async () => {
