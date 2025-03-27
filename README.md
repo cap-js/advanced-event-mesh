@@ -47,7 +47,7 @@ Additional configuration options are:
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `session` | [SessionProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SessionProperties.html) | Used for [`createSession`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html#createSession) when creating a session |
+| `session` | [SessionProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SessionProperties.html) | Used for [`createSession`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html#createSession) |
 | `queue`   | [createMsgVpnQueue](https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue) | The queue object which is created via the SEMP API |
 | `consumer` | [MessageConsumerProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.MessageConsumerProperties.html) | Used for [`createMessageConsumer`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.Session.html#createMessageConsumer) |
 
