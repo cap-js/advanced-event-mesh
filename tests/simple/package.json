@@ -17,8 +17,7 @@
         },
         "consumer": {
           "customConsumerOpt": true
-        },
-        "logLevel": 666
+        }
       },
       "ExtSrv": {
         "kind": "odata",
