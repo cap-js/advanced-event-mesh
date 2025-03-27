@@ -2,14 +2,15 @@ const cds = require('@sap/cds')
 
 const solace = require('solclientjs')
 const EventEmitter = require('events')
+const https = require('https')
 
 const AEM = 'SAP Integration Suite, advanced event mesh'
 const AEM_VAL = `${AEM} with plan "aem-validation-service"`
 const UPS_FORMAT = `{
   "authentication-service": {
     "tokenendpoint": "https://<host>/oauth2/token",
-    "clientid": "<clientid>",
-    "clientsecret": "<clientsecret>"
+    "clientid": "<client id>",
+    "clientsecret": "<client secret>"
   },
   "endpoints": {
     "advanced-event-mesh": {
@@ -20,20 +21,30 @@ const UPS_FORMAT = `{
   "vpn": "<vpn>"
 }`
 
+const _getCredsFromVcap = test => {
+  const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
+  if (!vcap) throw new Error('No VCAP_SERVICES in process environment')
+  for (const name in vcap) {
+    const srv = vcap[name][0]
+    if (test(srv)) return srv.credentials
+  }
+}
+
 const _validateAndFetchEndpoints = creds => {
   const MSG = `Missing or malformed credentials for ${AEM}.\n\nBind your app to a user-provided service with name "advanced-event-mesh" and credentials in the following format:\n${UPS_FORMAT}`
 
+  if (!creds || !creds['authentication-service'] || !creds.endpoints || !creds.vpn) throw new Error(MSG)
+
+  const auth_srv = creds['authentication-service']
+  if ((!auth_srv.tokenendpoint && !auth_srv['service-label']) || (auth_srv.tokenendpoint && auth_srv['service-label']))
+    throw new Error(MSG)
   if (
-    !creds ||
-    !creds['authentication-service'] ||
-    !creds['authentication-service'].tokenendpoint ||
-    !creds['authentication-service'].clientid ||
-    !creds['authentication-service'].clientsecret ||
-    !creds.endpoints ||
-    !creds.vpn
+    auth_srv.tokenendpoint &&
+    (!auth_srv.clientid || (!auth_srv.clientsecret && (!auth_srv.certificate || !auth_srv.key)))
   ) {
     throw new Error(MSG)
   }
+  if (auth_srv['service-label'] && !auth_srv.api) throw new Error(MSG)
 
   const first = creds.endpoints[Object.keys(creds.endpoints)[0]]
   if (!first || !first.uri || !first.smf_uri) throw new Error(MSG)
@@ -41,15 +52,38 @@ const _validateAndFetchEndpoints = creds => {
   return first
 }
 
+function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert, key, api }) {
+  return new Promise((resolve, reject) => {
+    const body = { grant_type: 'client_credentials', response_type: 'token', client_id: clientid }
+    if (api) body.resource = [`urn:sap:identity:application:provider:name:${api}`]
+    const options = { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' } }
+    // certificate or secret?
+    if (cert) options.agent = new https.Agent({ cert, key })
+    else body.client_secret = clientsecret
+    const data = Object.keys(body).reduce((acc, cur) => ((acc += (acc ? '&' : '') + cur + '=' + body[cur]), acc), '')
+    const req = https.request(tokenendpoint, options, res => {
+      const chunks = []
+      res.on('data', chunk => chunks.push(chunk))
+      res.on('end', () => {
+        const { statusCode: code, statusMessage: msg } = res
+        let body = Buffer.concat(chunks).toString()
+        if (res.headers['content-type']?.match(/json/)) body = JSON.parse(body)
+        if (res.statusCode >= 400) {
+          reject(new Error(`Token request failed with${msg ? `: ${code} - ${msg}` : ` status ${code}`}`))
+        } else {
+          resolve(body)
+        }
+      })
+    })
+    req.on('error', reject)
+    req.write(data)
+    req.end()
+  })
+}
+
 const _validateBroker = async mgmt_uri => {
-  // I'd rather not require users to specify _another_ cds.requires service
-  const creds = (() => {
-    const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
-    for (const name in vcap) {
-      const srv = vcap[name][0]
-      if (srv.plan === 'aem-validation-service-plan') return srv.credentials
-    }
-  })()
+  // via VCAP_SERVICES to avoid specifying _another_ cds.requires service
+  const creds = _getCredsFromVcap(srv => srv.plan === 'aem-validation-service-plan')
 
   if (
     !creds ||
@@ -64,26 +98,15 @@ const _validateBroker = async mgmt_uri => {
     throw new Error(`Missing credentials for ${AEM_VAL}.\n\nYou need to create a service binding.`)
   }
 
-  const validationTokenRes = await fetch(creds.handshake.oa2.tokenendpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: creds.handshake.oa2.clientid,
-      client_secret: creds.handshake.oa2.clientsecret
-    })
-  }).then(r => r.json())
+  const { access_token: validationToken } = await _fetchToken(creds.handshake.oa2)
 
-  if (validationTokenRes.error)
-    throw new Error(`Could not fetch token for ${AEM_VAL}: ${validationTokenRes.error_description}`)
-  const validationToken = validationTokenRes.access_token
-
-  const validatationRes = await fetch(creds.handshake.uri, {
+  const res = await fetch(creds.handshake.uri, {
     method: 'POST',
     body: JSON.stringify({ hostName: mgmt_uri.match(/https?:\/\/(.*):.*/)[1] }),
     headers: { Authorization: 'Bearer ' + validationToken }
   })
-  if (validatationRes.status !== 200) throw new Error(`${AEM}: The provided VMR is not provisioned via AEM`)
+  if (res.status === 500) throw new Error(`${AEM}: Error during VMR validation: 500 - ${res.statusText}`)
+  if (res.status !== 200) throw new Error(`${AEM}: The provided VMR is not provisioned via AEM`)
 }
 
 const _JSONorString = string => {
@@ -168,23 +191,15 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this._queues_uri = `${mgmt_uri}/msgVpns/${vpn}/queues`
     this._subscriptions_uri = `${this._queues_uri}/${encodeURIComponent(queueName)}/subscriptions`
 
-    const { tokenendpoint, clientid, clientsecret } = this.options.credentials['authentication-service']
-    const _fetchToken = async () => {
-      const res = await fetch(tokenendpoint, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: clientid,
-          client_secret: clientsecret // scope?
-        })
-      }).then(r => r.json())
-      if (res.error) throw new Error(`Could not fetch token for ${AEM}: ${res.error_description}`)
-      this.token_expires_in = res.expires_in
-      this.token = res.access_token //> REVISIT: when do we refresh the token?
+    let auth_srv = this.options.credentials['authentication-service']
+    if ('service-label' in auth_srv) {
+      const creds = _getCredsFromVcap(srv => srv.label === auth_srv['service-label'])
+      auth_srv = { ...auth_srv, ...creds }
+      auth_srv.tokenendpoint ??= auth_srv.url + '/oauth2/token'
     }
-
-    await _fetchToken()
+    const { access_token, expires_in } = await _fetchToken(auth_srv)
+    this.token = access_token
+    this.token_expires_in = expires_in
 
     const solclientFactoryProperties = Object.assign(
       {
@@ -209,18 +224,25 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this._eventRej.emit(sessionEvent.correlationKey, sessionEvent)
     })
 
-    const _scheduleUpdateToken = () => {
-      const waitingTime = (Math.max(this.token_expires_in - 10, 0)) * 1000
+    const _scheduleUpdateToken = waitingTime => {
+      waitingTime ??= Math.max(this.token_expires_in - 10, 0) * 1000
       setTimeout(async () => {
         this.LOG._info && this.LOG.info('Fetching fresh token')
-        await _fetchToken()
-        this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
-        _scheduleUpdateToken()
+        try {
+          const { access_token, expires_in } = await _fetchToken(auth_srv)
+          this.token = access_token
+          this.token_expires_in = expires_in
+          this.session.updateAuthenticationOnReconnect({ accessToken: this.token })
+          _scheduleUpdateToken()
+        } catch (error) {
+          this.LOG.error('Could not fetch fresh token:', error)
+          _scheduleUpdateToken(10 * 1000)
+        }
       }, waitingTime).unref()
     }
 
     return new Promise((resolve, reject) => {
-      this.session.on(solace.SessionEventCode.UP_NOTICE,() => {
+      this.session.on(solace.SessionEventCode.UP_NOTICE, () => {
         _scheduleUpdateToken()
         resolve()
       })

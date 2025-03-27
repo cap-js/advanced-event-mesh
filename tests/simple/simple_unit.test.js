@@ -92,11 +92,7 @@ jest.mock('solclientjs', () => {
 })
 
 global.fetch = jest.fn((url, opts) => {
-  if (url === '<tokenendpoint>') {
-    return Promise.resolve({
-      json: () => Promise.resolve({ access_token: '<sampleToken>', expires_in: 1 })
-    })
-  } else if (!opts.method && url === 'https://management-host:666/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
+  if (!opts.method && url === 'https://management-host:666/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
     return Promise.resolve({
       json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
     })
@@ -107,12 +103,27 @@ global.fetch = jest.fn((url, opts) => {
   })
 })
 
+jest.mock('https', () => {
+  const { Readable } = require('stream')
+  const noop = () => {}
+  return {
+    Agent: class {},
+    request: (url, opts, cb) => {
+      const res = new Readable()
+      res.push(JSON.stringify({ access_token: '<sampleToken>', expires_in: 1 }))
+      res.push(null)
+      Object.assign(res, { headers: { 'content-type': 'application/json' } })
+      setTimeout(() => cb(res), 1)
+      return { on: noop, write: noop, end: noop }
+    }
+  }
+})
+
 describe('simple unit tests', () => {
   cds.test()
 
   beforeAll(async () => {
     messaging = await cds.connect.to('messaging')
-    credentials = messaging.options.credentials
   })
 
   test('emit from app service', async () => {
