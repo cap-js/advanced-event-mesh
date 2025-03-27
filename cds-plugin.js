@@ -14,8 +14,9 @@ const UPS_FORMAT = `{
   },
   "endpoints": {
     "advanced-event-mesh": {
-      "uri": "https://<host>:943/SEMP/v2/config",
-      "smf_uri": "wss://<host>:443"
+      // "uri": "https://<host>:943/SEMP/v2/config",
+      // "smf_uri": "wss://<host>:443"
+      "uri": "https://<host>",
     }
   },
   "vpn": "<vpn>"
@@ -47,7 +48,7 @@ const _validateAndFetchEndpoints = creds => {
   if (auth_srv['service-label'] && !auth_srv.api) throw new Error(MSG)
 
   const first = creds.endpoints[Object.keys(creds.endpoints)[0]]
-  if (!first || !first.uri || !first.smf_uri) throw new Error(MSG)
+  if (!first || !first.uri /* || !first.smf_uri */) throw new Error(MSG)
 
   return first
 }
@@ -161,7 +162,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async init() {
     await super.init()
 
-    const { uri: mgmt_uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
+    // const { uri: mgmt_uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
+    const { uri } = _validateAndFetchEndpoints(this.options.credentials)
+    const mgmt_uri = uri + ':943/SEMP/v2/config'
+    const smf_uri = uri.replace(/^https/, 'wss') + ':443'
     await _validateBroker(mgmt_uri)
 
     this._eventAck = new EventEmitter() // for reliable messaging
