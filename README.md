@@ -64,13 +64,13 @@ The broker's credentials must be provided via a [user-provided service instance]
 ```jsonc
 {
   "authentication-service": {
-    "tokenendpoint": "https://<host>/oauth2/token",
+    "tokenendpoint": "https://<ias host>/oauth2/token",
     "clientid": "<client id>",
     "clientsecret": "<client secret>"
   },
   "endpoints": {
     "advanced-event-mesh": {
-      "uri": "https://<host>"
+      "uri": "https://<broker host>"
     }
   },
   "vpn": "<vpn>"

@@ -8,13 +8,13 @@ const AEM = 'SAP Integration Suite, advanced event mesh'
 const AEM_VAL = `${AEM} with plan "aem-validation-service"`
 const UPS_FORMAT = `{
   "authentication-service": {
-    "tokenendpoint": "https://<host>/oauth2/token",
+    "tokenendpoint": "https://<ias host>/oauth2/token",
     "clientid": "<client id>",
     "clientsecret": "<client secret>"
   },
   "endpoints": {
     "advanced-event-mesh": {
-      "uri": "https://<host>"
+      "uri": "https://<broker host>"
     }
   },
   "vpn": "<vpn>"
