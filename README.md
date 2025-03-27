@@ -43,6 +43,17 @@ You can create an SAP Integration Suite, advanced event mesh service with the fo
 }
 ```
 
+Additional configuration options are:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `session` | [SessionProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SessionProperties.html) | Used for [`createSession`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html#createSession) |
+| `queue`   | [createMsgVpnQueue](https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue) | The queue object which is created via the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm) |
+| `consumer` | [MessageConsumerProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.MessageConsumerProperties.html) | Used for [`createMessageConsumer`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.Session.html#createMessageConsumer) |
+| `clientFactory` | [SolclientFactoryProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactoryProperties.html#SolclientFactoryProperties) | Used to create the [SolclientFactory](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html) instance |
+
+The default values can be found in the plugin's [package.json](https://github.com/cap-js/advanced-event-mesh/blob/main/package.json).
+
 For more details, please refer to the [messaging section](https://cap.cloud.sap/docs/node.js/messaging) of the CAP Node.js documentation.
 
 The broker must be created manually in SAP Integration Suite, advanced event mesh and trust to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services) must be established, both for the Solace broker and the SEMP API.
