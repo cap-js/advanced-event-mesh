@@ -42,8 +42,7 @@
           },
           "endpoints": {
             "advanced-event-mesh": {
-              "uri": "https://management-host:666",
-              "smf_uri": "<uri>"
+              "uri": "https://foobar.messaging.solace.cloud"
             }
           }
         },
