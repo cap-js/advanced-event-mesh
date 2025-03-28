@@ -8,14 +8,14 @@ const AEM = 'SAP Integration Suite, advanced event mesh'
 const AEM_VAL = `${AEM} with plan "aem-validation-service"`
 const UPS_FORMAT = `{
   "authentication-service": {
-    "tokenendpoint": "https://<host>/oauth2/token",
+    "tokenendpoint": "https://<ias host>/oauth2/token",
     "clientid": "<client id>",
     "clientsecret": "<client secret>"
   },
   "endpoints": {
     "advanced-event-mesh": {
-      "uri": "https://<host>:943/SEMP/v2/config",
-      "smf_uri": "wss://<host>:443"
+      "uri": "https://<broker host>:<port>",
+      "smf_uri": "wss://<broker host>:<port>"
     }
   },
   "vpn": "<vpn>"
@@ -161,7 +161,8 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async init() {
     await super.init()
 
-    const { uri: mgmt_uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
+    const { uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
+    const mgmt_uri = uri + '/SEMP/v2/config'
     await _validateBroker(mgmt_uri)
 
     this._eventAck = new EventEmitter() // for reliable messaging
