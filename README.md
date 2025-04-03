@@ -50,7 +50,7 @@ Additional configuration options are:
 | `session` | [SessionProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SessionProperties.html) | Used for [`createSession`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html#createSession) |
 | `queue`   | [createMsgVpnQueue](https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue) | The queue object which is created via the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm) |
 | `consumer` | [MessageConsumerProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.MessageConsumerProperties.html) | Used for [`createMessageConsumer`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.Session.html#createMessageConsumer) |
-| `clientFactory` | [SolclientFactoryProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactoryProperties.html#SolclientFactoryProperties) | Used to create the client factory |
+| `clientFactory` | [SolclientFactoryProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactoryProperties.html#SolclientFactoryProperties) | Used to create the [SolclientFactory](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html) instance |
 
 The default values can be found in the plugin's [package.json](https://github.com/cap-js/advanced-event-mesh/blob/main/package.json).
 
@@ -64,19 +64,22 @@ The broker's credentials must be provided via a [user-provided service instance]
 ```jsonc
 {
   "authentication-service": {
-    "tokenendpoint": "https://<host>/oauth2/token",
+    "tokenendpoint": "https://<ias host>/oauth2/token",
     "clientid": "<client id>",
     "clientsecret": "<client secret>"
   },
   "endpoints": {
     "advanced-event-mesh": {
-      "uri": "https://<host>:943/SEMP/v2/config",
-      "smf_uri": "wss://<host>:443"
+      "uri": "https://<broker host>:<port>",
+      "smf_uri": "wss://<broker host>:<port>"
     }
   },
   "vpn": "<vpn>"
 }
 ```
+
+Finally, your app must be bound to an instance of service `SAP Integration Suite, advanced event mesh` with plan `aem-validation-service`.
+Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for how-to as well as background information.
 
 ## Support, Feedback, Contributing
 

@@ -1,11 +1,13 @@
 const cds = require('@sap/cds')
 cds.test.in(__dirname)
+
 const DATA = { key1: 1, value1: 1 }
 const MUST_FAIL = { mustFail: true, value1: 1 }
 const MUST_REJECT = { mustReject: true, value1: 1 }
 const DATA2 = { key2: 2, value2: 2 }
 const HEADERS = { keyHeader1: 1, valueHeader1: 1 }
 const HEADERS2 = { keyHeader2: 2, valueHeader2: 2 }
+
 let messaging
 
 const check = {
@@ -16,7 +18,7 @@ jest.mock('solclientjs', () => {
   return {
     SolclientFactory: {
       createSession(opts) {
-        expect(opts.url).toBe('<uri>')
+        expect(opts.url).toBe('wss://foobar.messaging.solace.cloud:456')
         expect(opts.vpnName).toBe('<vpn>')
         expect(opts.accessToken).toBe('<sampleToken>')
         expect(opts.authenticationScheme).toBe('AuthenticationScheme_oauth2')
@@ -92,7 +94,8 @@ jest.mock('solclientjs', () => {
 })
 
 global.fetch = jest.fn((url, opts) => {
-  if (!opts.method && url === 'https://management-host:666/msgVpns/<vpn>/queues/testQueueName/subscriptions') {
+  if (!opts.method && url.match(/\/subscriptions$/)) {
+    expect(url).toMatch(/^https:\/\/[\w.]+:123\/SEMP\/v2\/config\/.+$/)
     return Promise.resolve({
       json: () => Promise.resolve({ data: [{ subscriptionTopic: 'toBeDeleted' }] })
     })

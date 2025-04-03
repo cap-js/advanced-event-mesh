@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 - Prerequisite for inboxing inbound messages
 
 ## Version 0.0.1-alpha.0 - 2025-03-11
+## Version 0.1.0 - 2025-03-28
 
 ### Added
 
