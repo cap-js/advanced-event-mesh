@@ -133,8 +133,7 @@ const normalizeIncomingMessage = message => {
 
   return {
     data,
-    headers,
-    inbound: true
+    headers
   }
 }
 
@@ -296,7 +295,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       const msg = normalizeIncomingMessage(message.getBinaryAttachment())
       msg.event = event
       try {
-        await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+        await this.processInboundMsg({ user: cds.User.privileged }, msg)
         message.acknowledge()
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
