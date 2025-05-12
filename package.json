@@ -34,7 +34,7 @@
       "kinds": {
         "advanced-event-mesh": {
           "impl": "@cap-js/advanced-event-mesh",
-          "outbox": true,
+          "outboxed": true,
           "vcap": {
             "name": "advanced-event-mesh"
           },
