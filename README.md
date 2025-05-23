@@ -82,7 +82,7 @@ The broker's credentials must be provided via a [user-provided service instance]
 ### Broker Validation
 
 Your app must be bound to an instance of service `SAP Integration Suite, Advanced Event Mesh` with plan `aem-validation-service`.
-Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for how-to as well as background information.
+Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for more information.
 
 
 ### Additional Configuration Options
