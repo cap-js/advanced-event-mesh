@@ -15,9 +15,9 @@ CDS plugin providing integration with SAP Integration Suite, advanced event mesh
 - [About this project](#about-this-project)
 - [Requirements](#requirements)
 - [Setup](#setup)
-  - [Setting Up the Broker](#broker)
-  - [Broker Validation](#validation)
-  - [Additional Configuration Options](#options)
+  - [Setting Up the Broker](#setting-up-the-broker)
+  - [Broker Validation](#broker-validation)
+  - [Additional Configuration Options](#additional-configuration-options)
 - [Support, Feedback, Contributing](#support-feedback-contributing)
 - [Code of Conduct](#code-of-conduct)
 - [Licensing](#licensing)
@@ -54,7 +54,7 @@ Then, set the `kind` of your messaging service to `advanced-event-mesh`:
 ```
 
 
-### Setting Up the Broker { #broker }
+### Setting Up the Broker
 
 The broker itself must be created manually in SAP Integration Suite, advanced event mesh and trust must be established to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services), both for the Solace broker and the SEMP API.
 For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
@@ -79,13 +79,13 @@ The broker's credentials must be provided via a [user-provided service instance]
 ```
 
 
-### Broker Validation { #validation }
+### Broker Validation
 
 Your app must be bound to an instance of service `SAP Integration Suite, advanced event mesh` with plan `aem-validation-service`.
 Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for how-to as well as background information.
 
 
-### Additional Configuration Options { #options }
+### Additional Configuration Options
 
 Additional configuration options for the messaging service (i.e., `cds.requires.messaging`) are:
 
