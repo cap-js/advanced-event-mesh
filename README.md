@@ -87,7 +87,7 @@ Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integr
 
 ### Additional Configuration Options { #options }
 
-Additional configuration options for the messaging service are:
+Additional configuration options for the messaging service (i.e., `cds.requires.messaging`) are:
 
 | Property | Type | Description |
 | --- | --- | --- |
