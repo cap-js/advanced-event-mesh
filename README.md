@@ -57,8 +57,9 @@ The default values can be found in the plugin's [package.json](https://github.co
 For more details, please refer to the [messaging section](https://cap.cloud.sap/docs/node.js/messaging) of the CAP Node.js documentation.
 
 The broker must be created manually in SAP Integration Suite, advanced event mesh and trust to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services) must be established, both for the Solace broker and the SEMP API.
-For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
+For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm).
 
+You need to manually configure SAP Integration Suite, advanced event mesh to allow your application to connect to the broker by following the [steps in the documentation](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
 The broker's credentials must be provided via a [user-provided service instance](https://docs.cloudfoundry.org/devguide/services/user-provided.html) with the name `advanced-event-mesh` and credentials in the following format:
 
 ```jsonc
@@ -77,6 +78,7 @@ The broker's credentials must be provided via a [user-provided service instance]
   "vpn": "<vpn>"
 }
 ```
+To troubleshoot connection issues, you can set the environment variable `DEBUG=messaging` before starting the application.
 
 Finally, your app must be bound to an instance of service `SAP Integration Suite, advanced event mesh` with plan `aem-validation-service`.
 Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for how-to as well as background information.
