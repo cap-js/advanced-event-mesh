@@ -285,8 +285,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async startListening() {
     if (!this._listenToAll.value && !this.subscribedTopics.size) return
 
-    await this._createQueueM()
-    await this._subscribeTopicsM()
+    if (this.options.skipManagement === true) {
+      await this._createQueueM()
+      await this._subscribeTopicsM()
+    }
 
     this.options.consumer.queueDescriptor.name = this.options.queue.name
 
