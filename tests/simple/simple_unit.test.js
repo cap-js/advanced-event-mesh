@@ -253,4 +253,43 @@ describe('simple unit tests', () => {
       done()
     }, 1000)
   })
+
+  test('listening', () => {
+    messaging.on('cap.external.object.changed.v1', () => {})
+    cds.emit('listening')
+    expect(fetch).toHaveBeenCalledWith('https://em-pubsub-broker.mesh.cf.sap.hana.ondemand.com/handshake', {"body": "{\"hostName\":\"foobar.messaging.solace.cloud\"}", "headers": {"Authorization": "Bearer <sampleToken>"}, "method": "POST"})
+    expect(fetch).toHaveBeenCalledWith('https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues',
+      {
+        method: 'POST',
+        body: "{\"permission\":\"consume\",\"ingressEnabled\":true,\"egressEnabled\":true,\"customQueueOpt\":true,\"queueName\":\"testQueueName\"}",
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer <sampleToken>'
+        }
+      }),
+    expect(fetch).toHaveBeenCalledWith('https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions',{"headers": {"accept": "application/json", "authorization": "Bearer <sampleToken>"}})
+  })
+
+  test('skipManagement listening', async () => {
+    const opts = Object.assign({}, messaging.options)
+    opts.skipManagement = true
+    opts.queue.name = 'testQueueName2'
+    const messagingSkipped = await cds.connect.to('messagingSkipped', opts)
+    messagingSkipped.on('cap.external.object.changed.v1', () => {})
+    cds.emit('listening')
+    expect(fetch).not.toHaveBeenCalledWith('https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues',
+      {
+        method: 'POST',
+        body: "{\"permission\":\"consume\",\"ingressEnabled\":true,\"egressEnabled\":true,\"customQueueOpt\":true,\"queueName\":\"testQueueName2\"}",
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          encoding: 'utf-8',
+          authorization: 'Bearer <sampleToken>'
+        }
+      }),
+    expect(fetch).not.toHaveBeenCalledWith('https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName2/subscriptions',{"headers": {"accept": "application/json", "authorization": "Bearer <sampleToken>"}})
+  })
 })
