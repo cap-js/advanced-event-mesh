@@ -4,7 +4,7 @@ const solace = require('solclientjs')
 const EventEmitter = require('events')
 const https = require('https')
 
-const AEM = 'SAP Integration Suite, Advanced Event Mesh'
+const AEM = 'SAP Integration Suite, advanced event mesh'
 const AEM_VAL = `${AEM} with plan "aem-validation-service"`
 const UPS_FORMAT = `{
   "authentication-service": {

@@ -6,7 +6,7 @@
 
 ## About this project
 
-CDS plugin providing integration with SAP Integration Suite, Advanced Event Mesh.
+CDS plugin providing integration with SAP Integration Suite, advanced event mesh.
 
 
 
@@ -56,8 +56,8 @@ Then, set the `kind` of your messaging service to `advanced-event-mesh`:
 
 ### Setting Up the Broker
 
-The broker itself must be created manually in SAP Integration Suite, Advanced Event Mesh and trust must be established to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services), both for the Solace broker and the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm).
-For details, please consult SAP Integration Suite, Advanced Event Mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
+The broker itself must be created manually in SAP Integration Suite, advanced event mesh and trust must be established to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services), both for the Solace broker and the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm).
+For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
 
 The broker's credentials must be provided via a [user-provided service instance](https://docs.cloudfoundry.org/devguide/services/user-provided.html) with the name `advanced-event-mesh` and credentials in the following format:
 
@@ -81,7 +81,7 @@ The broker's credentials must be provided via a [user-provided service instance]
 
 ### Broker Validation
 
-Your app must be bound to an instance of service `SAP Integration Suite, Advanced Event Mesh` with plan `aem-validation-service`.
+Your app must be bound to an instance of service `SAP Integration Suite, advanced event mesh` with plan `aem-validation-service`.
 Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for more information.
 
 

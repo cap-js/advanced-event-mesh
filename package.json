@@ -1,7 +1,7 @@
 {
   "name": "@cap-js/advanced-event-mesh",
   "version": "0.1.0",
-  "description": "CDS plugin providing integration with SAP Integration Suite, Advanced Event Mesh",
+  "description": "CDS plugin providing integration with SAP Integration Suite, advanced event mesh",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cap-js/advanced-event-mesh.git"
