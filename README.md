@@ -57,9 +57,12 @@ Then, set the `kind` of your messaging service to `advanced-event-mesh`:
 ### Setting Up the Broker
 
 The broker itself must be created manually in SAP Integration Suite, advanced event mesh and trust must be established to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services), both for the Solace broker and the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm).
-For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
+For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm) and [help.sap.com](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh).
 
-The broker's credentials must be provided via a [user-provided service instance](https://docs.cloudfoundry.org/devguide/services/user-provided.html) with the name `advanced-event-mesh` and credentials in the following format:
+Specifically, you need to configure SAP Integration Suite, advanced event mesh to allow your CAP application to connect to the broker.
+For this, follow guide [CAP Plugin for SAP Integration Suite, Advanced Event Mesh](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
+
+Finally, the broker's credentials must be provided via a [user-provided service instance](https://docs.cloudfoundry.org/devguide/services/user-provided.html) with the name `advanced-event-mesh` and credentials in the following format:
 
 ```jsonc
 {
@@ -77,6 +80,9 @@ The broker's credentials must be provided via a [user-provided service instance]
   "vpn": "<vpn>"
 }
 ```
+
+To troubleshoot connection issues, set log level for component `messaging` to `DEBUG`.
+Check [`cds.log()`](https://cap.cloud.sap/docs/node.js/cds-log) for how to maintain log levels.
 
 
 ### Broker Validation
