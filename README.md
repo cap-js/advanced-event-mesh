@@ -56,7 +56,7 @@ Then, set the `kind` of your messaging service to `advanced-event-mesh`:
 
 ### Setting Up the Broker
 
-The broker must be created manually in SAP Integration Suite, advanced event mesh and trust to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services) must be established, both for the Solace broker and the SEMP API.
+The broker itself must be created manually in SAP Integration Suite, advanced event mesh and trust must be established to the respective application in [SAP Cloud Identity Services](https://help.sap.com/docs/cloud-identity-services/cloud-identity-services), both for the Solace broker and the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm).
 For details, please consult SAP Integration Suite, advanced event mesh's documentation at [help.pubsub.em.services.cloud.sap](https://help.pubsub.em.services.cloud.sap/Get-Started/get-started-lp.htm).
 
 You need to manually configure SAP Integration Suite, advanced event mesh to allow your application to connect to the broker by following the [steps in the documentation](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/cap-plugin-for-sap-integration-suite-advanced-event-mesh).
