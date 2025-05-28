@@ -97,6 +97,7 @@ Additional configuration options for the messaging service (i.e., `cds.requires.
 | `clientFactory` | [SolclientFactoryProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactoryProperties.html#SolclientFactoryProperties) | Used to create the [SolclientFactory](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html) instance |
 
 The default values can be found in the plugin's [package.json](https://github.com/cap-js/advanced-event-mesh/blob/main/package.json).
+As always, the effective configuration for your project can be queried via CLI command [`cds env`](https://cap.cloud.sap/docs/node.js/cds-env).
 
 For more details, please refer to the [messaging section](https://cap.cloud.sap/docs/node.js/messaging) of the CAP Node.js documentation.
 
