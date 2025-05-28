@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## Version 0.1.1 - tbd
 
-- Prerequisite for inboxing inbound messages
+- Prerequisite for inboxing messages
 
 ## Version 0.1.0 - 2025-03-28
 
