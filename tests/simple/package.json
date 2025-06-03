@@ -7,7 +7,7 @@
     "requires": {
       "messaging": {
         "kind": "advanced-event-mesh",
-        "_outboxed": false,
+        "outbox": false,
         "session": {
           "customSessionOpt": true
         },
