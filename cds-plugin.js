@@ -133,7 +133,9 @@ const normalizeIncomingMessage = message => {
 
   return {
     data,
-    headers
+    headers,
+    // TODO: needed for cds^8?
+    inbound: true
   }
 }
 
