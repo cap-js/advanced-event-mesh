@@ -1,8 +1,8 @@
 namespace db;
 
 entity Messages {
-  key ID: UUID;
-  event: String;
-  data: String;
-  headers: String;
+  key ID      : UUID;
+      event   : String;
+      data    : String;
+      headers : String;
 }
