@@ -274,11 +274,11 @@ describe('simple unit tests', () => {
           authorization: 'Bearer <sampleToken>'
         }
       }
-    ),
-      expect(fetch).toHaveBeenCalledWith(
-        'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions',
-        { headers: { accept: 'application/json', authorization: 'Bearer <sampleToken>' } }
-      )
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions',
+      { headers: { accept: 'application/json', authorization: 'Bearer <sampleToken>' } }
+    )
   })
 
   test('skipManagement listening', async () => {
@@ -300,10 +300,10 @@ describe('simple unit tests', () => {
           authorization: 'Bearer <sampleToken>'
         }
       }
-    ),
-      expect(fetch).not.toHaveBeenCalledWith(
-        'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName2/subscriptions',
-        { headers: { accept: 'application/json', authorization: 'Bearer <sampleToken>' } }
-      )
+    )
+    expect(fetch).not.toHaveBeenCalledWith(
+      'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName2/subscriptions',
+      { headers: { accept: 'application/json', authorization: 'Bearer <sampleToken>' } }
+    )
   })
 })
