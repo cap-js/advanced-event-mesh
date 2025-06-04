@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 ### Added
 
 - Configuration option `skipManagement` to skip creation of queue and subscription
+- Prerequisite for inboxing messages
 
 ## Version 0.1.0 - 2025-03-28
 
