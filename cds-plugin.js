@@ -1,4 +1,5 @@
 const cds = require('@sap/cds')
+const CDS_8 = cds.version.split('.')[0] < 9
 
 const solace = require('solclientjs')
 const EventEmitter = require('events')
@@ -131,11 +132,8 @@ const normalizeIncomingMessage = message => {
     headers = {}
   }
 
-  return {
-    data,
-    headers,
-    inbound: true
-  }
+  if (CDS_8) return { data, headers, inbound: true }
+  return { data, headers }
 }
 
 const getAppMetadata = () => {
@@ -299,7 +297,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       const msg = normalizeIncomingMessage(message.getBinaryAttachment())
       msg.event = event
       try {
-        await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+        // NOTE: processInboundMsg doesn't exist in cds^8
+        if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+        else await this.processInboundMsg({ user: cds.User.privileged }, msg)
         message.acknowledge()
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
