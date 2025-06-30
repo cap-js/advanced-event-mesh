@@ -81,7 +81,7 @@ Finally, the broker's credentials must be provided via a [user-provided service 
 }
 ```
 
-In case your user-provided service instance has a different name (e.g. my-aem-broker), or you want to be able to test your application in hybrid mode using `cds bind`, you should tag your user-provided service with `advanced-event-mesh` with the following command:
+In case your user-provided service instance has a different name (e.g. my-aem-broker), or you want to be able to test your application in hybrid mode using `cds bind`, you should tag your user-provided service with `advanced-event-mesh`. Either as a [mta.yaml resource parameter](https://help.sap.com/docs/btp/sap-business-technology-platform/service-tags), or with the following cli command:
 
 ```bash
 cf uups my-aem-broker -t "advanced-event-mesh"
@@ -96,7 +96,7 @@ Check [`cds.log()`](https://cap.cloud.sap/docs/node.js/cds-log) for how to maint
 Your app must be bound to an instance of service `SAP Integration Suite, advanced event mesh` with plan `aem-validation-service`.
 Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for more information.
 
-In case your validation service is provided via a user-provided service instance (if it resides in a different sub account), you should tag it with `aem-validation-service` with the following command:
+In case your validation service is provided via a user-provided service instance (if it resides in a different sub account), you should tag it with `aem-validation-service`. Either as a [mta.yaml resource parameter](https://help.sap.com/docs/btp/sap-business-technology-platform/service-tags), or with the following cli command:
 
 ```bash
 cf uups my-aem-validation-service -t "aem-validation-service"
