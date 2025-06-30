@@ -90,6 +90,11 @@ Check [`cds.log()`](https://cap.cloud.sap/docs/node.js/cds-log) for how to maint
 Your app must be bound to an instance of service `SAP Integration Suite, advanced event mesh` with plan `aem-validation-service`.
 Please see [Validation of VMR Provisioning](https://help.sap.com/docs/sap-integration-suite/advanced-event-mesh/validation-of-vmr-provisioning) for more information.
 
+In case your validation service is provided via a user-provided service instance (if it resides in a different sub account), you should tag it with `aem-validation-service` with the following command:
+
+```bash
+cf uups my-aem-validation-service -t "aem-validation-service"
+```
 
 ### Additional Configuration Options
 

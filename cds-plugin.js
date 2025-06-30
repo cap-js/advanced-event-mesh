@@ -25,9 +25,10 @@ const UPS_FORMAT = `{
 const _getCredsFromVcap = test => {
   const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
   if (!vcap) throw new Error('No VCAP_SERVICES in process environment')
-  for (const name in vcap) {
-    const srv = vcap[name][0]
-    if (test(srv)) return srv.credentials
+  for (const binding in vcap) {
+    for (const instance of vcap[binding]) {
+      if (test(instance)) return instance.credentials
+    }
   }
 }
 
@@ -84,7 +85,7 @@ function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert,
 
 const _validateBroker = async mgmt_uri => {
   // via VCAP_SERVICES to avoid specifying _another_ cds.requires service
-  const creds = _getCredsFromVcap(srv => srv.plan === 'aem-validation-service-plan')
+  const creds = _getCredsFromVcap(srv => (srv.plan === 'aem-validation-service-plan' || srv.tags.includes('aem-validation-service')))
 
   if (
     !creds ||
