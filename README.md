@@ -81,6 +81,12 @@ Finally, the broker's credentials must be provided via a [user-provided service 
 }
 ```
 
+In case your user-provided service instance has a different name (e.g. my-aem-broker), or you want to be able to test your application in hybrid mode using `cds bind`, you should tag your user-provided service with `advanced-event-mesh` with the following command:
+
+```bash
+cf uups my-aem-broker -t "advanced-event-mesh"
+```
+
 To troubleshoot connection issues, set log level for component `messaging` to `DEBUG`.
 Check [`cds.log()`](https://cap.cloud.sap/docs/node.js/cds-log) for how to maintain log levels.
 

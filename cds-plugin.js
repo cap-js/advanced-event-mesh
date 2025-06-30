@@ -33,7 +33,7 @@ const _getCredsFromVcap = test => {
 }
 
 const _validateAndFetchEndpoints = creds => {
-  const MSG = `Missing or malformed credentials for ${AEM}.\n\nBind your app to a user-provided service with name "advanced-event-mesh" and credentials in the following format:\n${UPS_FORMAT}`
+  const MSG = `Missing or malformed credentials for ${AEM}.\n\nBind your app to a user-provided service with name or tag "advanced-event-mesh" and credentials in the following format:\n${UPS_FORMAT}`
 
   if (!creds || !creds['authentication-service'] || !creds.endpoints || !creds.vpn) throw new Error(MSG)
 
