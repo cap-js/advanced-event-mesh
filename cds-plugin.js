@@ -294,7 +294,13 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
-      const msg = normalizeIncomingMessage(message.getBinaryAttachment())
+      let payload
+      if (message.getType() == solace.MessageType.TEXT) {
+        payload = message.getSdtContainer().getValue()
+      } else {
+        payload = message.getBinaryAttachment()
+      }
+      const msg = normalizeIncomingMessage(payload)
       msg.event = event
       try {
         // NOTE: processInboundMsg doesn't exist in cds^8
