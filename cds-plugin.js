@@ -161,7 +161,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     await super.init()
 
     const { uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
-    const mgmt_uri = uri + '/SEMP/v2/config'
+    const mgmt_uri = uri.endsWith('/SEMP/v2/config') ? uri : uri + '/SEMP/v2/config'
     await _validateBroker(mgmt_uri)
 
     this._eventAck = new EventEmitter() // for reliable messaging
