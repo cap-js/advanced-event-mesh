@@ -266,7 +266,7 @@ describe('simple unit tests', () => {
       'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues',
       {
         method: 'POST',
-        body: '{"permission":"consume","ingressEnabled":true,"egressEnabled":true,"customQueueOpt":true,"queueName":"testQueueName"}',
+        body: '{"permission":"consume","ingressEnabled":true,"egressEnabled":true,"queueName":"testQueueName"}',
         headers: {
           accept: 'application/json',
           'content-type': 'application/json',
@@ -292,7 +292,7 @@ describe('simple unit tests', () => {
       'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues',
       {
         method: 'POST',
-        body: '{"permission":"consume","ingressEnabled":true,"egressEnabled":true,"customQueueOpt":true,"queueName":"testQueueName2"}',
+        body: '{"permission":"consume","ingressEnabled":true,"egressEnabled":true,"queueName":"testQueueName2"}',
         headers: {
           accept: 'application/json',
           'content-type': 'application/json',
