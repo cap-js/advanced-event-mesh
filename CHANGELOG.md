@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## Version 0.2.1 - 2025-08-08
+
+- Support for Solace's message payload type `TEXT`
+
 ## Version 0.2.0 - 2025-06-05
 
 ### Added
