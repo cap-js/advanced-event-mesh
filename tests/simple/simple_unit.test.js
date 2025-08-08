@@ -149,6 +149,9 @@ describe('simple unit tests', () => {
           }
         }
       },
+      getType() {
+        return 0 //> not TEXT (=== 3)
+      },
       getBinaryAttachment() {
         return JSON.stringify({ data: DATA, ...HEADERS })
       },
@@ -178,6 +181,9 @@ describe('simple unit tests', () => {
           }
         }
       },
+      getType() {
+        return 0 //> not TEXT (=== 3)
+      },
       getBinaryAttachment() {
         return JSON.stringify({ data: DATA, ...HEADERS })
       },
@@ -204,6 +210,9 @@ describe('simple unit tests', () => {
           }
         }
       },
+      getType() {
+        return 0 //> not TEXT (=== 3)
+      },
       getBinaryAttachment() {
         return JSON.stringify({ data: MUST_FAIL, ...HEADERS })
       },
@@ -229,6 +238,9 @@ describe('simple unit tests', () => {
             return 'cap.external.object.changed.v1'
           }
         }
+      },
+      getType() {
+        return 0 //> not TEXT (=== 3)
       },
       getBinaryAttachment() {
         return JSON.stringify({ data: MUST_REJECT, ...HEADERS })
