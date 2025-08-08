@@ -78,6 +78,12 @@ jest.mock('solclientjs', () => {
     MessageDeliveryModeType: {
       PERSISTENT: 'PERSISTENT'
     },
+    MessageType: {
+      BINARY: 0,
+      MAP: 1,
+      STREAM: 2,
+      TEXT: 3
+    },
     SolclientFactoryProperties: class {},
     SolclientFactoryProfiles: {},
     SessionEventCode: {
