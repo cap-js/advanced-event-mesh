@@ -10,9 +10,7 @@
   "homepage": "https://cap.cloud.sap/",
   "license": "Apache-2.0",
   "main": "cds-plugin.js",
-  "files": [
-    "CHANGELOG.md"
-  ],
+  "files": [],
   "scripts": {
     "lint": "npx eslint .",
     "test": "npx jest --silent"
