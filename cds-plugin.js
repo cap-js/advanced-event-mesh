@@ -82,7 +82,7 @@ function _fetchToken({ tokenendpoint, clientid, clientsecret, certificate: cert,
   })
 }
 
-const _validateBroker = async mgmt_uri => {
+const _validateBroker = async (mgmt_uri, subaccountId) => {
   // via VCAP_SERVICES to avoid specifying _another_ cds.requires service
   const creds = _getCredsFromVcap(srv => srv.plan === 'aem-validation-service-plan')
 
@@ -101,9 +101,12 @@ const _validateBroker = async mgmt_uri => {
 
   const { access_token: validationToken } = await _fetchToken(creds.handshake.oa2)
 
+  const body = { hostName: mgmt_uri.match(/https?:\/\/(.*):.*/)[1] }
+  if (subaccountId) body.subaccountId = subaccountId
+
   const res = await fetch(creds.handshake.uri, {
     method: 'POST',
-    body: JSON.stringify({ hostName: mgmt_uri.match(/https?:\/\/(.*):.*/)[1] }),
+    body: JSON.stringify(body),
     headers: { Authorization: 'Bearer ' + validationToken }
   })
   if (res.status === 500) throw new Error(`${AEM}: Error during VMR validation: 500 - ${res.statusText}`)
@@ -161,7 +164,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     const { uri, smf_uri } = _validateAndFetchEndpoints(this.options.credentials)
     const mgmt_uri = uri + '/SEMP/v2/config'
-    await _validateBroker(mgmt_uri)
+    await _validateBroker(mgmt_uri, this.options.subaccountId)
 
     this._eventAck = new EventEmitter() // for reliable messaging
     this._eventRej = new EventEmitter() // for reliable messaging
