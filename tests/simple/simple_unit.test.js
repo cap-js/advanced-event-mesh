@@ -1,9 +1,6 @@
 const cds = require('@sap/cds')
 cds.test.in(__dirname)
 
-// Set global Jest timeout for this test file
-jest.setTimeout(30000)
-
 const DATA = { key1: 1, value1: 1 }
 const MUST_FAIL = { mustFail: true, value1: 1 }
 const MUST_REJECT = { mustReject: true, value1: 1 }
