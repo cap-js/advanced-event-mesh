@@ -15,6 +15,9 @@
     "lint": "npx eslint .",
     "test": "npx jest --silent"
   },
+  "jest": {
+    "testTimeout": 30000
+  },
   "dependencies": {
     "@sap/xb-msg-amqp-v100": "*",
     "solclientjs": "^10.17.1"

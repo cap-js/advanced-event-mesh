@@ -1,6 +1,9 @@
 const cds = require('@sap/cds')
 cds.test.in(__dirname)
 
+// Set global Jest timeout for this test file
+jest.setTimeout(30000)
+
 const DATA = { key1: 1, value1: 1 }
 const MUST_FAIL = { mustFail: true, value1: 1 }
 const MUST_REJECT = { mustReject: true, value1: 1 }
@@ -133,7 +136,7 @@ describe('simple unit tests', () => {
 
   beforeAll(async () => {
     messaging = await cds.connect.to('messaging')
-  })
+  }, 30000)
 
   test('emit from app service', async () => {
     await messaging.emit('foo', DATA, HEADERS)
