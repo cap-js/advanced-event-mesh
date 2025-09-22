@@ -98,6 +98,7 @@ Additional configuration options for the messaging service (i.e., `cds.requires.
 | Property | Type | Description |
 | --- | --- | --- |
 | `skipManagement` | `boolean` | If set to `true`, the plugin will not create a queue or subscription. This is useful if you want to manage these resources manually, default: `false` |
+| `subaccountId` | `string` | The ID of the subaccount in which SAP Integration Suite, advanced event mesh is subscribed. This is necessary in case the app runs in a different subaccount. |
 | `session` | [SessionProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SessionProperties.html) | Used for [`createSession`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html#createSession) |
 | `queue`   | [createMsgVpnQueue](https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/software-broker/config/index.html#/msgVpn/createMsgVpnQueue) | The queue object which is created via the [SEMP API](https://docs.solace.com/Admin/SEMP/Using-SEMP.htm) |
 | `consumer` | [MessageConsumerProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.MessageConsumerProperties.html) | Used for [`createMessageConsumer`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.Session.html#createMessageConsumer) |
