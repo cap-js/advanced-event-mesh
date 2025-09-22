@@ -133,7 +133,7 @@ describe('simple unit tests', () => {
 
   beforeAll(async () => {
     messaging = await cds.connect.to('messaging')
-  })
+  }, 30000)
 
   test('emit from app service', async () => {
     await messaging.emit('foo', DATA, HEADERS)
