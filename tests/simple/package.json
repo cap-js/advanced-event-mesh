@@ -17,7 +17,8 @@
         },
         "consumer": {
           "customConsumerOpt": true
-        }
+        },
+        "subaccountId": "foo bar"
       },
       "ExtSrv": {
         "kind": "odata",
