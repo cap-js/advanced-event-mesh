@@ -295,37 +295,39 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
     this.messageConsumer = this.session.createMessageConsumer(this.options.consumer)
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
-      const event = message.getDestination().getName()
-      if (this.LOG._info) this.LOG.info('Received message', event)
-      let payload
-      if (message.getType() == solace.MessageType.TEXT) {
-        payload = message.getSdtContainer().getValue()
-      } else {
-        payload = message.getBinaryAttachment()
-      }
-      const msg = normalizeIncomingMessage(payload)
-      msg.event = event
-      try {
-        // NOTE: processInboundMsg doesn't exist in cds^8
-        if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
-        else await this.processInboundMsg({ user: cds.User.privileged }, msg)
-        message.acknowledge()
-      } catch (e) {
-        e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
-        this.LOG.error(e)
-        // The error property `unrecoverable` is used for the outbox to mark unrecoverable errors.
-        // We can use the same here to properly reject the message.
-        if (
-          e.unrecoverable &&
-          this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.REJECTED)
-        ) {
-          return message.settle(solace.MessageOutcome.REJECTED)
+      await cds._with({ id: cds.utils.uuid() }, async () => {
+        const event = message.getDestination().getName()
+        if (this.LOG._info) this.LOG.info('Received message', event)
+        let payload
+        if (message.getType() == solace.MessageType.TEXT) {
+          payload = message.getSdtContainer().getValue()
+        } else {
+          payload = message.getBinaryAttachment()
         }
-        if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
-          return message.settle(solace.MessageOutcome.FAILED)
-        // Nothing else we can do
-        message.acknowledge()
-      }
+        const msg = normalizeIncomingMessage(payload)
+        msg.event = event
+        try {
+          // NOTE: processInboundMsg doesn't exist in cds^8
+          if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+          else await this.processInboundMsg({ user: cds.User.privileged }, msg)
+          message.acknowledge()
+        } catch (e) {
+          e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
+          this.LOG.error(e)
+          // The error property `unrecoverable` is used for the outbox to mark unrecoverable errors.
+          // We can use the same here to properly reject the message.
+          if (
+            e.unrecoverable &&
+            this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.REJECTED)
+          ) {
+            return message.settle(solace.MessageOutcome.REJECTED)
+          }
+          if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
+            return message.settle(solace.MessageOutcome.FAILED)
+          // Nothing else we can do
+          message.acknowledge()
+        }
+      })
     })
     return new Promise((resolve, reject) => {
       this.messageConsumer.on(solace.MessageConsumerEventName.UP, () => {
