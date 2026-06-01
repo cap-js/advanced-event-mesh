@@ -121,24 +121,6 @@ const _JSONorString = string => {
   }
 }
 
-// Some messaging systems don't adhere to the standard that the payload has a `data` property.
-// For these cases, we interpret the whole payload as `data`.
-const normalizeIncomingMessage = message => {
-  const _payload = typeof message === 'object' ? message : _JSONorString(message)
-  let data, headers
-  if (typeof _payload === 'object' && 'data' in _payload) {
-    data = _payload.data
-    headers = { ..._payload }
-    delete headers.data
-  } else {
-    data = _payload
-    headers = {}
-  }
-
-  if (CDS_8) return { data, headers, inbound: true }
-  return { data, headers }
-}
-
 const getAppMetadata = () => {
   // NOT official, but consistent with Event Mesh!
   const appMetadata = cds.env.app
@@ -303,7 +285,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       } else {
         payload = message.getBinaryAttachment()
       }
-      const msg = normalizeIncomingMessage(payload)
+      const msg = this.normalizeIncomingMessage(payload)
       msg.event = event
       try {
         // NOTE: processInboundMsg doesn't exist in cds^8
@@ -468,5 +450,25 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
       this.LOG.error(error)
       throw error
     }
+  }
+
+  /**
+   * Some messaging systems don't adhere to the standard that the payload has a data property 
+   * For these cases, we interpret the whole payload as data
+   */ 
+  _normalizeIncomingMessage(message) {
+    const _payload = typeof message === 'object' ? message : _JSONorString(message)
+    let data, headers
+    if (typeof _payload === 'object' && 'data' in _payload) {
+      data = _payload.data
+      headers = { ..._payload }
+      delete headers.data
+    } else {
+      data = _payload
+      headers = {}
+    }
+
+    if (CDS_8) return { data, headers, inbound: true }
+    return { data, headers }
   }
 }
