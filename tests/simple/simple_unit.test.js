@@ -275,7 +275,7 @@ describe('simple unit tests', () => {
   test('listening', () => {
     messaging.on('cap.external.object.changed.v1', () => {})
     cds.emit('listening')
-    expect(fetch).toHaveBeenCalledWith('https://em-pubsub-broker.mesh.cf.sap.hana.ondemand.com/handshake', {
+    expect(fetch).toHaveBeenCalledWith('<handshake uri>', {
       body: '{"hostName":"foobar.messaging.solace.cloud","subaccountId":"foo bar"}',
       headers: { Authorization: 'Bearer <sampleToken>' },
       method: 'POST'
