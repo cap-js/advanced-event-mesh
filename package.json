@@ -20,13 +20,13 @@
     "solclientjs": "^10.17.1"
   },
   "peerDependencies": {
-    "@sap/cds": ">=8"
+    "@sap/cds": "^10 || ^9"
   },
   "devDependencies": {
     "@cap-js/advanced-event-mesh": "file:.",
     "@sap-cloud-sdk/resilience": "^4.0.1",
-    "@cap-js/cds-test": "^0",
-    "@cap-js/sqlite": ">=1"
+    "@cap-js/cds-test": "^1",
+    "@cap-js/sqlite": "^3 || ^2"
   },
   "cds": {
     "requires": {
