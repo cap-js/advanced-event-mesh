@@ -25,8 +25,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.x, 20.x]
-        cds-version: [9, 8]
+        node-version: [24.x, 22.x]
+        cds-version: [10, 9]
     steps:
       - uses: actions/checkout@v6.0.2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -35,7 +35,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
       - run: npm i
-      - run: if [ ${{ matrix.cds-version }} -eq 8 ]; then npm i -f @sap/cds@8 @cap-js/sqlite@1; fi
-      - run: npm explore better-sqlite3 -- npm run install
+      - run: if [ ${{ matrix.cds-version }} -eq 9 ]; then npm i -f @sap/cds@9 @cap-js/sqlite@2; fi
+      - run: if [ ${{ matrix.cds-version }} -eq 9 ]; then npm explore better-sqlite3 -- npm run install; fi
       - run: cds v
       - run: npm run test
