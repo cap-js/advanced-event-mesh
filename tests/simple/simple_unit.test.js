@@ -265,6 +265,35 @@ describe('simple unit tests', () => {
     })
   })
 
+  test('malformed payload "null" is settled, not leaked', done => {
+    messaging.messageConsumer.emit('MESSAGE', {
+      getDestination() {
+        return {
+          getName() {
+            return 'cap.external.object.changed.v1'
+          }
+        }
+      },
+      getType() {
+        return 0 //> not TEXT (=== 3)
+      },
+      getBinaryAttachment() {
+        return 'null'
+      },
+      async acknowledge() {
+        done()
+      },
+      settle(e) {
+        try {
+          expect(e).toBe(1) //> FAILED — handler couldn't process `null` payload
+          done()
+        } catch (err) {
+          done(err)
+        }
+      }
+    })
+  })
+
   test('fresh new token', done => {
     setTimeout(() => {
       expect(messaging.session.updateAuthenticationOnReconnect).toHaveBeenCalled()
