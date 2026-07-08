@@ -281,7 +281,7 @@ describe('simple unit tests', () => {
         return 'null'
       },
       async acknowledge() {
-        done()
+        done(new Error('Should not have acknowledged: malformed payload must settle'))
       },
       settle(e) {
         try {
