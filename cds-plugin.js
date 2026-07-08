@@ -126,7 +126,8 @@ const _JSONorString = string => {
 const normalizeIncomingMessage = message => {
   const _payload = typeof message === 'object' ? message : _JSONorString(message)
   let data, headers
-  if (typeof _payload === 'object' && 'data' in _payload) {
+  // Note: `typeof null === 'object'`, so guard explicitly to avoid `'data' in null` throwing.
+  if (_payload !== null && typeof _payload === 'object' && 'data' in _payload) {
     data = _payload.data
     headers = { ..._payload }
     delete headers.data
@@ -297,15 +298,15 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
-      let payload
-      if (message.getType() == solace.MessageType.TEXT) {
-        payload = message.getSdtContainer().getValue()
-      } else {
-        payload = message.getBinaryAttachment()
-      }
-      const msg = normalizeIncomingMessage(payload)
-      msg.event = event
       try {
+        let payload
+        if (message.getType() == solace.MessageType.TEXT) {
+          payload = message.getSdtContainer().getValue()
+        } else {
+          payload = message.getBinaryAttachment()
+        }
+        const msg = normalizeIncomingMessage(payload)
+        msg.event = event
         // NOTE: processInboundMsg doesn't exist in cds^8
         if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
         else await this.processInboundMsg({ user: cds.User.privileged }, msg)

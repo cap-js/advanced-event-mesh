@@ -265,6 +265,35 @@ describe('simple unit tests', () => {
     })
   })
 
+  test('malformed payload "null" is settled, not leaked', done => {
+    messaging.messageConsumer.emit('MESSAGE', {
+      getDestination() {
+        return {
+          getName() {
+            return 'cap.external.object.changed.v1'
+          }
+        }
+      },
+      getType() {
+        return 0 //> not TEXT (=== 3)
+      },
+      getBinaryAttachment() {
+        return 'null'
+      },
+      async acknowledge() {
+        done(new Error('Should not have acknowledged: malformed payload must settle'))
+      },
+      settle(e) {
+        try {
+          expect(e).toBe(1) //> FAILED — handler couldn't process `null` payload
+          done()
+        } catch (err) {
+          done(err)
+        }
+      }
+    })
+  })
+
   test('fresh new token', done => {
     setTimeout(() => {
       expect(messaging.session.updateAuthenticationOnReconnect).toHaveBeenCalled()
@@ -275,7 +304,7 @@ describe('simple unit tests', () => {
   test('listening', () => {
     messaging.on('cap.external.object.changed.v1', () => {})
     cds.emit('listening')
-    expect(fetch).toHaveBeenCalledWith('https://em-pubsub-broker.mesh.cf.sap.hana.ondemand.com/handshake', {
+    expect(fetch).toHaveBeenCalledWith('<handshake uri>', {
       body: '{"hostName":"foobar.messaging.solace.cloud","subaccountId":"foo bar"}',
       headers: { Authorization: 'Bearer <sampleToken>' },
       method: 'POST'
