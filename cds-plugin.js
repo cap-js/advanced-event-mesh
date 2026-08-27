@@ -308,7 +308,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         const msg = normalizeIncomingMessage(payload)
         msg.event = event
         // NOTE: processInboundMsg doesn't exist in cds^8
-        if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
+        if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg)) // REVISIT: Remove?
         else await this.processInboundMsg({ user: cds.User.privileged }, msg)
         message.acknowledge()
       } catch (e) {
