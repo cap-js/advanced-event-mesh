@@ -377,33 +377,50 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async _subscribeTopicsM() {
     const existingTopics = await this._getSubscriptionsM()
-    const topics = [...this.subscribedTopics].map(kv => kv[0])
-    const newTopics = []
-    for (const t of topics) if (!existingTopics.includes(t)) newTopics.push(t)
-    const toBeDeletedTopics = []
-    for (const t of existingTopics) if (!topics.includes(t)) toBeDeletedTopics.push(t)
-    await Promise.all(toBeDeletedTopics.map(t => this._deleteSubscriptionM(t)))
-    await Promise.all(newTopics.map(t => this._createSubscriptionM(t)))
+    const requiredTopics = [...this.subscribedTopics].map(kv => kv[0])
+    
+    const topicsToCreate = []
+    for (const t of requiredTopics) if (!existingTopics.includes(t)) topicsToCreate.push(t)
+    
+    const topicsToDelete = []
+    for (const t of existingTopics) if (!requiredTopics.includes(t)) topicsToDelete.push(t)
+    
+    await Promise.all(topicsToDelete.map(t => this._deleteSubscriptionM(t)))
+    await Promise.all(topicsToCreate.map(t => this._createSubscriptionM(t)))
   }
 
   async _getSubscriptionsM() {
     const queueName = this.options.queue.name
+
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
+
     try {
-      const res = await fetch(this._subscriptions_uri, {
-        headers: {
-          accept: 'application/json',
-          authorization: 'Bearer ' + this.token
-        }
-      }).then(r => r.json())
-      if (res.meta?.error) throw res.meta.error
-      return res.data.map(t => t.subscriptionTopic)
+      const topics = []
+      let nextUri = this._subscriptions_uri
+
+      while (nextUri) {
+        const res = await fetch(nextUri, {
+          headers: {
+            accept: 'application/json',
+            authorization: 'Bearer ' + this.token
+          }
+        }).then(r => r.json())
+
+        if (res.meta?.error) throw res.meta.error
+
+        topics.push(...res.data.map(t => t.subscriptionTopic))
+        nextUri = res.meta?.paging?.nextPageUri ?? null
+      }
+
+      return topics
     } catch (e) {
       const error = new Error(`Subscriptions for "${queueName}" could not be retrieved`)
       error.code = 'GET_SUBSCRIPTIONS_FAILED'
       error.target = { kind: 'SUBSCRIPTION', queue: queueName }
       error.reason = e
+
       this.LOG.error(error)
+
       throw error
     }
   }
