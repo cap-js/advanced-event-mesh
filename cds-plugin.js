@@ -263,14 +263,19 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async handle(msg) {
     if (msg.inbound) return super.handle(msg)
+    
     const _msg = this.message4(msg)
+    const correlationKey = cds.utils.uuid()
+
     this.LOG._info && this.LOG.info('Emit', { topic: _msg.event })
+  
     const message = solace.SolclientFactory.createMessage()
     message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event))
     message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
     message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT)
     const correlationKey = cds.utils.uuid()
     message.setCorrelationKey(correlationKey)
+    
     return new Promise((resolve, reject) => {
       this._eventAck.once(correlationKey, () => {
         this._eventRej.removeAllListeners(correlationKey)
