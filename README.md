@@ -104,6 +104,24 @@ Additional configuration options for the messaging service (i.e., `cds.requires.
 | `consumer` | [MessageConsumerProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.MessageConsumerProperties.html) | Used for [`createMessageConsumer`](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.Session.html#createMessageConsumer) |
 | `clientFactory` | [SolclientFactoryProperties](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactoryProperties.html#SolclientFactoryProperties) | Used to create the [SolclientFactory](https://docs.solace.com/API-Developer-Online-Ref-Documentation/nodejs/solace.SolclientFactory.html) instance |
 
+Example for manually managed resources (no queue/subscription creation by the plugin):
+
+```jsonc
+{
+  "cds": {
+    "requires": {
+      "messaging": {
+        "kind": "advanced-event-mesh",
+        "skipManagement": true,
+        "queue": {
+          "queueName": "<name of queue>"
+        }
+      }
+    }
+  }
+}
+```
+
 The default values can be found in the plugin's [package.json](https://github.com/cap-js/advanced-event-mesh/blob/main/package.json).
 As always, the effective configuration for your project can be queried via CLI command [`cds env`](https://cap.cloud.sap/docs/node.js/cds-env).
 
