@@ -273,7 +273,6 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event))
     message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
     message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT)
-    const correlationKey = cds.utils.uuid()
     message.setCorrelationKey(correlationKey)
     
     return new Promise((resolve, reject) => {
