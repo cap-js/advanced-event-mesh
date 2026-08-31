@@ -378,13 +378,13 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
   async _subscribeTopicsM() {
     const existingTopics = await this._getSubscriptionsM()
     const requiredTopics = [...this.subscribedTopics].map(kv => kv[0])
-    
+
     const topicsToCreate = []
     for (const t of requiredTopics) if (!existingTopics.includes(t)) topicsToCreate.push(t)
-    
+
     const topicsToDelete = []
     for (const t of existingTopics) if (!requiredTopics.includes(t)) topicsToDelete.push(t)
-    
+
     await Promise.all(topicsToDelete.map(t => this._deleteSubscriptionM(t)))
     await Promise.all(topicsToCreate.map(t => this._createSubscriptionM(t)))
   }
