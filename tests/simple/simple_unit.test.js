@@ -328,6 +328,69 @@ describe('simple unit tests', () => {
     )
   })
 
+  describe('listening', () => {
+    describe('when multiple pages of subscriptions exist already', () => {
+      // prettier-ignore
+      const SUBSCRIPTIONS_URI = 'https://foobar.messaging.solace.cloud:123/SEMP/v2/config/msgVpns/<vpn>/queues/testQueueName/subscriptions'
+      const PAGE_2_URI = SUBSCRIPTIONS_URI + '?cursor=page2cursor&count=10'
+
+      let originalFetch = global.fetch
+      let fetchMock = jest.fn((url, opts) => {
+        if (!opts?.method && url === SUBSCRIPTIONS_URI) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              data: [
+                { subscriptionTopic: 'topic/page1/a' },
+                { subscriptionTopic: 'topic/page1/b' }
+              ],
+              meta: { paging: { nextPageUri: PAGE_2_URI } }
+            })
+          })
+        }
+        if (!opts?.method && url === PAGE_2_URI) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              data: [{ subscriptionTopic: 'topic/page2/a' }],
+              meta: {}
+            })
+          })
+        }
+        return Promise.resolve({
+          status: 200,
+          json: () => Promise.resolve('default response')
+        })
+      })
+
+      beforeEach(() => {
+        global.fetch = fetchMock
+      })
+
+      afterEach(() => {
+        global.fetch = originalFetch
+      })
+
+      test('fetches all subscription pages', async () => {
+        // TODO: Review AI Test
+        const topics = await messaging._getSubscriptionsM()
+
+        expect(topics).toEqual([
+          'topic/page1/a',
+          'topic/page1/b',
+          'topic/page2/a'
+        ])
+        expect(global.fetch).toHaveBeenCalledWith(
+          SUBSCRIPTIONS_URI,
+          expect.objectContaining({ headers: expect.any(Object) })
+        )
+        expect(global.fetch).toHaveBeenCalledWith(
+          PAGE_2_URI,
+          expect.objectContaining({ headers: expect.any(Object) })
+        )
+        expect(global.fetch).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
+
   test('skipManagement listening', async () => {
     const opts = Object.assign({}, messaging.options)
     opts.skipManagement = true
