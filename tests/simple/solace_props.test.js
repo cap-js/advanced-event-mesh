@@ -74,9 +74,9 @@ describe('when msgHeadersAsSolaceProps=true to activate forwarding of headers as
     // remaining headers routed into the user property map, typed
     const map = sent.userPropertyMap
     expect(map.getKeys().sort()).toEqual(['customFlag', 'customNum', 'customText'])
-    expect(map.getField('customFlag')).toEqual({ type: 0, value: true })
-    expect(map.getField('customNum')).toEqual({ type: 8, value: 7 })
-    expect(map.getField('customText')).toEqual({ type: 10, value: 'x' })
+    expect(map.getField('customFlag')).toMatchObject({ type: 0, value: true })
+    expect(map.getField('customNum')).toMatchObject({ type: 8, value: 7 })
+    expect(map.getField('customText')).toMatchObject({ type: 10, value: 'x' })
 
     // headers are also included 'binary attachment'
     expect(sent.binary).toBe(JSON.stringify({ data: DATA, ...headers }))

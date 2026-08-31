@@ -134,6 +134,26 @@ const _SOLACE_HEADER_SETTERS = {
   elidingEligible:        (msg, v) => msg.setElidingEligible(v),
 }
 
+const _SOLACE_HEADER_GETTERS = {
+  applicationMessageId:   msg => msg.getApplicationMessageId(),
+  applicationMessageType: msg => msg.getApplicationMessageType(),
+  correlationId:          msg => msg.getCorrelationId(),
+  httpContentEncoding:    msg => msg.getHttpContentEncoding(),
+  httpContentType:        msg => msg.getHttpContentType(),
+  senderId:               msg => msg.getSenderId(),
+  userData:               msg => msg.getUserData(),
+  gmExpiration:           msg => msg.getGMExpiration(),
+  priority:               msg => msg.getPriority(),
+  senderTimestamp:        msg => msg.getSenderTimestamp(),
+  sequenceNumber:         msg => msg.getSequenceNumber(),
+  timeToLive:             msg => msg.getTimeToLive(),
+  acknowledgeImmediately: msg => msg.isAcknowledgeImmediately(),
+  asReplyMessage:         msg => msg.isReplyMessage(),
+  deliverToOne:           msg => msg.isDeliverToOne(),
+  dmqEligible:            msg => msg.isDMQEligible(),
+  elidingEligible:        msg => msg.isElidingEligible(),
+}
+
 const _applyHeadersToMessage = (msg, headers) => {
 
   const customUserProps = Object.entries(headers).reduce((acc, [key, val]) => {
@@ -159,6 +179,21 @@ const _applyHeadersToMessage = (msg, headers) => {
 
     msg.setUserPropertyMap(map)
   }
+}
+
+const _extractSolaceHeaders = solaceMsg => {
+  const headers = {}
+  for (const [key, getter] of Object.entries(_SOLACE_HEADER_GETTERS)) {
+    const v = getter(solaceMsg)
+    if (v != null) headers[key] = v
+  }
+  const map = solaceMsg.getUserPropertyMap()
+  if (map) {
+    for (const key of map.getKeys()) {
+      headers[key] = map.getField(key).getValue()
+    }
+  }
+  return headers
 }
 
 const _JSONorString = string => {
@@ -353,23 +388,31 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.messageConsumer = this.session.createMessageConsumer(this.options.consumer)
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
+      
       if (this.LOG._info) this.LOG.info('Received message', event)
-      try {
+      
+        try {
         let payload
         if (message.getType() == solace.MessageType.TEXT) {
           payload = message.getSdtContainer().getValue()
         } else {
           payload = message.getBinaryAttachment()
         }
+
         const msg = normalizeIncomingMessage(payload)
         msg.event = event
+        if (this.options.msgHeadersAsSolaceProps) Object.assign(msg.headers, _extractSolaceHeaders(message))
+        
         // NOTE: processInboundMsg doesn't exist in cds^8
         if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
         else await this.processInboundMsg({ user: cds.User.privileged }, msg)
+
         message.acknowledge()
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
+        
         this.LOG.error(e)
+        
         // The error property `unrecoverable` is used for the outbox to mark unrecoverable errors.
         // We can use the same here to properly reject the message.
         if (
@@ -378,8 +421,10 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         ) {
           return message.settle(solace.MessageOutcome.REJECTED)
         }
+        
         if (this.options.consumer.requiredSettlementOutcomes.includes(solace.MessageOutcome.FAILED))
           return message.settle(solace.MessageOutcome.FAILED)
+        
         // Nothing else we can do
         message.acknowledge()
       }

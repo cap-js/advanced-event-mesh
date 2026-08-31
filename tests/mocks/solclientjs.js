@@ -74,7 +74,26 @@ module.exports = {
         setDeliverToOne(v) { this.deliverToOne = v },
         setDMQEligible(v) { this.dmqEligible = v },
         setElidingEligible(v) { this.elidingEligible = v },
-        setUserPropertyMap(v) { this.userPropertyMap = v }
+        setUserPropertyMap(v) { this.userPropertyMap = v },
+        
+        getCorrelationId() { return this.correlationId },
+        getApplicationMessageId() { return this.applicationMessageId },
+        getApplicationMessageType() { return this.applicationMessageType },
+        getHttpContentEncoding() { return this.httpContentEncoding },
+        getHttpContentType() { return this.httpContentType },
+        getSenderId() { return this.senderId },
+        getUserData() { return this.userData },
+        getGMExpiration() { return this.gmExpiration },
+        getPriority() { return this.priority },
+        getSenderTimestamp() { return this.senderTimestamp },
+        getSequenceNumber() { return this.sequenceNumber },
+        getTimeToLive() { return this.timeToLive },
+        isAcknowledgeImmediately() { return this.acknowledgeImmediately },
+        isReplyMessage() { return this.asReplyMessage },
+        isDeliverToOne() { return this.deliverToOne },
+        isDMQEligible() { return this.dmqEligible },
+        isElidingEligible() { return this.elidingEligible },
+        getUserPropertyMap() { return this.userPropertyMap ?? null }
       }
     },
     createTopicDestination(topic) {
@@ -118,7 +137,7 @@ module.exports = {
   },
   SDTMapContainer: class {
     constructor() { this._fields = {} }
-    addField(key, type, value) { this._fields[key] = { type, value } }
+    addField(key, type, value) { this._fields[key] = { type, value, getValue() { return value } } }
     getField(key) { return this._fields[key] }
     getKeys() { return Object.keys(this._fields) }
   }
