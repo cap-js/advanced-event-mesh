@@ -10,7 +10,7 @@ const HEADERS2 = { keyHeader2: 2, valueHeader2: 2 }
 
 let messaging
 
-const { check } = require('../mocks/solclientjs')
+const { mockMessageAcc } = require('../mocks/solclientjs')
 jest.mock('solclientjs', () => require('../mocks/solclientjs'))
 jest.mock('https', () => require('../mocks/https'))
 global.fetch = require('../mocks/fetch')
@@ -25,12 +25,26 @@ describe('simple unit tests', () => {
   test('emit from app service', async () => {
     await messaging.emit('foo', DATA, HEADERS)
     await messaging.emit('bar', DATA2, HEADERS2)
-    expect(check.sentMessages[0].binary).toBe(JSON.stringify({ data: DATA, ...HEADERS }))
-    expect(check.sentMessages[0].dest).toBe('foo')
-    expect(check.sentMessages[0].mode).toBe('PERSISTENT')
-    expect(check.sentMessages[1].binary).toBe(JSON.stringify({ data: DATA2, ...HEADERS2 }))
-    expect(check.sentMessages[1].dest).toBe('bar')
-    expect(check.sentMessages[1].mode).toBe('PERSISTENT')
+    expect(mockMessageAcc.sentMessages[0].binary).toBe(JSON.stringify({ data: DATA, ...HEADERS }))
+    expect(mockMessageAcc.sentMessages[0].dest).toBe('foo')
+    expect(mockMessageAcc.sentMessages[0].mode).toBe('PERSISTENT')
+    expect(mockMessageAcc.sentMessages[1].binary).toBe(JSON.stringify({ data: DATA2, ...HEADERS2 }))
+    expect(mockMessageAcc.sentMessages[1].dest).toBe('bar')
+    expect(mockMessageAcc.sentMessages[1].mode).toBe('PERSISTENT')
+  })
+
+  test('should not set solace properties from headers or custom headers when msgHeadersAsSolaceProps=false', async () => {
+
+    const before = mockMessageAcc.sentMessages.length
+    const headers = { correlationId: 'corr-2', priority: 9, customText: 'y' }
+
+    await messaging.emit('qux', DATA, headers)
+    const sent = mockMessageAcc.sentMessages[before]
+
+    expect(sent.correlationId).toBeUndefined()
+    expect(sent.priority).toBeUndefined()
+    expect(sent.userPropertyMap).toBeUndefined()
+    expect(sent.binary).toBe(JSON.stringify({ data: DATA, ...headers }))
   })
 
   test('successful consumption', done => {

@@ -18,6 +18,9 @@
         "consumer": {
           "customConsumerOpt": true
         },
+        "[solaceProps]": {
+          "msgHeadersAsSolaceProps": true
+        },
         "subaccountId": "foo bar"
       },
       "ExtSrv": {

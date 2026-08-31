@@ -113,6 +113,54 @@ const _validateBroker = async (mgmt_uri, subaccountId) => {
   if (res.status !== 200) throw new Error(`${AEM}: The provided VMR is not provisioned via AEM`)
 }
 
+// Enable passing known solace properties through 'headers'
+const _SOLACE_HEADER_SETTERS = {
+  applicationMessageId:   (msg, v) => msg.setApplicationMessageId(v),
+  applicationMessageType: (msg, v) => msg.setApplicationMessageType(v),
+  correlationId:          (msg, v) => msg.setCorrelationId(v),
+  httpContentEncoding:    (msg, v) => msg.setHttpContentEncoding(v),
+  httpContentType:        (msg, v) => msg.setHttpContentType(v),
+  senderId:               (msg, v) => msg.setSenderId(v),
+  userData:               (msg, v) => msg.setUserData(v),
+  gmExpiration:           (msg, v) => msg.setGMExpiration(v),
+  priority:               (msg, v) => msg.setPriority(v),
+  senderTimestamp:        (msg, v) => msg.setSenderTimestamp(v),
+  sequenceNumber:         (msg, v) => msg.setSequenceNumber(v),
+  timeToLive:             (msg, v) => msg.setTimeToLive(v),
+  acknowledgeImmediately: (msg, v) => msg.setAcknowledgeImmediately(v),
+  asReplyMessage:         (msg, v) => msg.setAsReplyMessage(v),
+  deliverToOne:           (msg, v) => msg.setDeliverToOne(v),
+  dmqEligible:            (msg, v) => msg.setDMQEligible(v),
+  elidingEligible:        (msg, v) => msg.setElidingEligible(v),
+}
+
+const _applyHeadersToMessage = (msg, headers) => {
+
+  const customUserProps = Object.entries(headers).reduce((acc, [key, val]) => {
+    if (_SOLACE_HEADER_SETTERS[key]) _SOLACE_HEADER_SETTERS[key](msg, val)
+    else acc[key] = val
+    return acc
+  }, {})
+
+  if (Object.keys(customUserProps).length) {
+    const map = new solace.SDTMapContainer()
+    
+    for (const [key, val] of Object.entries(customUserProps)) {
+      let sdtType; 
+      if (typeof val === 'number') {
+        if (Number.isInteger(val)) sdtType = solace.SDTFieldType.INT64
+        else sdtType = solace.SDTFieldType.DOUBLETYPE
+      }
+      else if (typeof val === 'boolean') sdtType = solace.SDTFieldType.BOOL
+      else sdtType = solace.SDTFieldType.STRING
+
+      map.addField(key, sdtType, val)
+    }
+
+    msg.setUserPropertyMap(map)
+  }
+}
+
 const _JSONorString = string => {
   try {
     return JSON.parse(string)
@@ -272,6 +320,9 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     const message = solace.SolclientFactory.createMessage()
     message.setDestination(solace.SolclientFactory.createTopicDestination(msg.event))
     message.setBinaryAttachment(JSON.stringify({ data: _msg.data, ...(_msg.headers || {}) }))
+    if (this.options.msgHeadersAsSolaceProps && _msg.headers && Object.keys(_msg.headers).length) {
+      _applyHeadersToMessage(message, _msg.headers)
+    }
     message.setDeliveryMode(solace.MessageDeliveryModeType.PERSISTENT)
     message.setCorrelationKey(correlationKey)
     
@@ -284,6 +335,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         this._eventAck.removeAllListeners(correlationKey)
         reject()
       })
+      
       this.session.send(message)
     })
   }

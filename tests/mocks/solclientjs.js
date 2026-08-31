@@ -1,17 +1,17 @@
 // solclientjs fake for the `simple` test app. Wired via
 // `jest.mock('solclientjs', () => require('../mocks/solclientjs'))`.
 //
-// Also exports `check` — the assertion sink the mock pushes sent messages to.
+// Also exports `mockMessageAcc` — the assertion sink the mock pushes sent messages to.
 // jest gives each test file a fresh module registry, so each file gets its own
-// `check` instance (sentMessages do not bleed across files), and within a file
+// `mockMessageAcc` instance (sentMessages do not bleed across files), and within a file
 // the mock and the test resolve the same singleton.
 
-const check = {
+const mockMessageAcc = {
   sentMessages: []
 }
 
 module.exports = {
-  check,
+  mockMessageAcc,
   SolclientFactory: {
     createSession(opts) {
       expect(opts.url).toBe('wss://foobar.messaging.solace.cloud:456')
@@ -27,7 +27,7 @@ module.exports = {
       }
       s.send = msg => {
         c.emit('MESSGE', msg)
-        check.sentMessages.push(msg)
+        mockMessageAcc.sentMessages.push(msg)
         s.emit('ACKNOWLEDGED_MESSAGE', msg)
       }
       s.createMessageConsumer = opts => {
