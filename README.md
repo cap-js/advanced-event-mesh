@@ -122,6 +122,8 @@ Example for manually managed resources (no queue/subscription creation by the pl
 }
 ```
 
+With `skipManagement: true`, the queue and its topic subscriptions must already exist on the broker — the plugin only binds the consumer to the existing queue and will not create them.
+
 The default values can be found in the plugin's [package.json](https://github.com/cap-js/advanced-event-mesh/blob/main/package.json).
 As always, the effective configuration for your project can be queried via CLI command [`cds env`](https://cap.cloud.sap/docs/node.js/cds-env).
 
