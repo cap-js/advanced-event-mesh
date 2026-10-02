@@ -402,6 +402,7 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
         }).then(r => r.json())
 
         if (res.meta?.error) throw res.meta.error
+        if (!Array.isArray(res.data)) throw new Error(`Unexpected response shape: missing 'data' array`)
 
         topics.push(...res.data.map(t => t.subscriptionTopic))
         nextUri = res.meta?.paging?.nextPageUri ?? null

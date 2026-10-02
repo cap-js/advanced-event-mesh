@@ -362,6 +362,7 @@ describe('simple unit tests', () => {
       })
 
       beforeEach(() => {
+        fetchMock.mockClear()
         global.fetch = fetchMock
       })
 
