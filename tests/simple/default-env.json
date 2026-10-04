@@ -7,22 +7,22 @@
         "plan": "aem-validation-service-plan",
         "name": "cap-aem-validation",
         "tags": ["eventing", "aem", "eventmesh"],
-        "instance_guid": "6a2c31d5-31dc-4ece-8833-eae016af64f2",
+        "instance_guid": "fdc8eed2-b45b-4ee2-8d42-0ed519971a33",
         "instance_name": "cap-aem-validation",
-        "binding_guid": "a832ecaf-eb81-4582-a344-87354243bf07",
+        "binding_guid": "d151baa1-71e2-4596-9e04-24906e08fb15",
         "binding_name": null,
         "credentials": {
-          "xsappname": "46B0354E-C61B-11ED-AFA1-0242AC120002-6a2c31d5-31dc-4ece-8833-eae016af64f2!b191218|em-pubsub-service-broker!b38991",
+          "xsappname": "<xsappname>",
           "handshake": {
             "oa2": {
-              "clientid": "sb-46B0354E-C61B-11ED-AFA1-0242AC120002-6a2c31d5-31dc-4ece-8833-eae016af64f2!b191218|em-pubsub-service-broker!b38991",
-              "clientsecret": "0c0251d8-c1f4-45ba-8921-075bbf986bbd$Im-xm-iWbtWC-1WDueF7UqsUxIqOUOXijWJITxFLd1Q=",
+              "clientid": "<clientid>",
+              "clientsecret": "<clientsecret>",
               "granttype": "client_credentials",
-              "tokenendpoint": "https://cap-aem-nodejs.authentication.sap.hana.ondemand.com/oauth/token"
+              "tokenendpoint": "<tokenendpoint>"
             },
-            "uri": "https://em-pubsub-broker.mesh.cf.sap.hana.ondemand.com/handshake"
+            "uri": "<handshake uri>"
           },
-          "serviceinstanceid": "6a2c31d5-31dc-4ece-8833-eae016af64f2"
+          "serviceinstanceid": "35b6d87d-c19e-4b42-a5f6-b9663bd92cd5"
         },
         "syslog_drain_url": null,
         "volume_mounts": []

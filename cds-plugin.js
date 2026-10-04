@@ -1,5 +1,4 @@
 const cds = require('@sap/cds')
-const CDS_8 = cds.version.split('.')[0] < 9
 
 const solace = require('solclientjs')
 const EventEmitter = require('events')
@@ -126,7 +125,8 @@ const _JSONorString = string => {
 const normalizeIncomingMessage = message => {
   const _payload = typeof message === 'object' ? message : _JSONorString(message)
   let data, headers
-  if (typeof _payload === 'object' && 'data' in _payload) {
+  // Note: `typeof null === 'object'`, so guard explicitly to avoid `'data' in null` throwing.
+  if (_payload !== null && typeof _payload === 'object' && 'data' in _payload) {
     data = _payload.data
     headers = { ..._payload }
     delete headers.data
@@ -134,8 +134,6 @@ const normalizeIncomingMessage = message => {
     data = _payload
     headers = {}
   }
-
-  if (CDS_8) return { data, headers, inbound: true }
   return { data, headers }
 }
 
@@ -297,18 +295,16 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
     this.messageConsumer.on(solace.MessageConsumerEventName.MESSAGE, async message => {
       const event = message.getDestination().getName()
       if (this.LOG._info) this.LOG.info('Received message', event)
-      let payload
-      if (message.getType() == solace.MessageType.TEXT) {
-        payload = message.getSdtContainer().getValue()
-      } else {
-        payload = message.getBinaryAttachment()
-      }
-      const msg = normalizeIncomingMessage(payload)
-      msg.event = event
       try {
-        // NOTE: processInboundMsg doesn't exist in cds^8
-        if (CDS_8) await this.tx({ user: cds.User.privileged }, tx => tx.emit(msg))
-        else await this.processInboundMsg({ user: cds.User.privileged }, msg)
+        let payload
+        if (message.getType() == solace.MessageType.TEXT) {
+          payload = message.getSdtContainer().getValue()
+        } else {
+          payload = message.getBinaryAttachment()
+        }
+        const msg = normalizeIncomingMessage(payload)
+        msg.event = event
+        await this.processInboundMsg({ user: cds.User.privileged }, msg)
         message.acknowledge()
       } catch (e) {
         e.message = 'ERROR occurred in asynchronous event processing: ' + e.message
@@ -376,33 +372,51 @@ module.exports = class AdvancedEventMesh extends cds.MessagingService {
 
   async _subscribeTopicsM() {
     const existingTopics = await this._getSubscriptionsM()
-    const topics = [...this.subscribedTopics].map(kv => kv[0])
-    const newTopics = []
-    for (const t of topics) if (!existingTopics.includes(t)) newTopics.push(t)
-    const toBeDeletedTopics = []
-    for (const t of existingTopics) if (!topics.includes(t)) toBeDeletedTopics.push(t)
-    await Promise.all(toBeDeletedTopics.map(t => this._deleteSubscriptionM(t)))
-    await Promise.all(newTopics.map(t => this._createSubscriptionM(t)))
+    const requiredTopics = [...this.subscribedTopics].map(kv => kv[0])
+
+    const topicsToCreate = []
+    for (const t of requiredTopics) if (!existingTopics.includes(t)) topicsToCreate.push(t)
+
+    const topicsToDelete = []
+    for (const t of existingTopics) if (!requiredTopics.includes(t)) topicsToDelete.push(t)
+
+    await Promise.all(topicsToDelete.map(t => this._deleteSubscriptionM(t)))
+    await Promise.all(topicsToCreate.map(t => this._createSubscriptionM(t)))
   }
 
   async _getSubscriptionsM() {
     const queueName = this.options.queue.name
+
     this.LOG._info && this.LOG.info('Get subscriptions', { queue: queueName })
+
     try {
-      const res = await fetch(this._subscriptions_uri, {
-        headers: {
-          accept: 'application/json',
-          authorization: 'Bearer ' + this.token
-        }
-      }).then(r => r.json())
-      if (res.meta?.error) throw res.meta.error
-      return res.data.map(t => t.subscriptionTopic)
+      const topics = []
+      let nextUri = this._subscriptions_uri
+
+      while (nextUri) {
+        const res = await fetch(nextUri, {
+          headers: {
+            accept: 'application/json',
+            authorization: 'Bearer ' + this.token
+          }
+        }).then(r => r.json())
+
+        if (res.meta?.error) throw res.meta.error
+        if (!Array.isArray(res.data)) throw new Error(`Unexpected response shape: missing 'data' array`)
+
+        topics.push(...res.data.map(t => t.subscriptionTopic))
+        nextUri = res.meta?.paging?.nextPageUri ?? null
+      }
+
+      return topics
     } catch (e) {
       const error = new Error(`Subscriptions for "${queueName}" could not be retrieved`)
       error.code = 'GET_SUBSCRIPTIONS_FAILED'
       error.target = { kind: 'SUBSCRIPTION', queue: queueName }
       error.reason = e
+
       this.LOG.error(error)
+
       throw error
     }
   }
