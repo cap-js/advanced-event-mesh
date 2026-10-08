@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## Version 1.1.0 - 2026-10-08
+## Version 1.1.0 - 2026-10-09
 
 ### Removed
 
@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Fixed
 
-- Pagination of existing queue subscriptions: `_getSubscriptionsM()` now reads all SEMP pages, so valid subscriptions are no longer dropped and recreated on reconnect (#58)
+- Pagination of existing queue subscriptions: `_getSubscriptionsM()` now reads all SEMP pages, so valid subscriptions are no longer dropped and recreated on reconnect
 
 ## Version 1.0.0 - 2025-09-29
 
