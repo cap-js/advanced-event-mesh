@@ -132,4 +132,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+.cds
 .claude
