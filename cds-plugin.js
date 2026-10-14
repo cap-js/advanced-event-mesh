@@ -24,7 +24,7 @@ const UPS_FORMAT = `{
 const _getCredsFromVcap = test => {
   const vcap_services = process.env.VCAP_SERVICES_FILE_PATH
     ? JSON.parse(cds.utils.fs.readFileSync(process.env.VCAP_SERVICES_FILE_PATH, 'utf-8'))
-    : JSON.parse(process.env.VCAP_SERVICES)
+    : process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
   
   if (!vcap_services) throw new Error('No VCAP_SERVICES in process environment')
   
