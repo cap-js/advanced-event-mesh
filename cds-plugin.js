@@ -22,10 +22,14 @@ const UPS_FORMAT = `{
 }`
 
 const _getCredsFromVcap = test => {
-  const vcap = process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
-  if (!vcap) throw new Error('No VCAP_SERVICES in process environment')
-  for (const name in vcap) {
-    const srv = vcap[name][0]
+  const vcap_services = process.env.VCAP_SERVICES_FILE_PATH
+    ? JSON.parse(cds.utils.fs.readFileSync(process.env.VCAP_SERVICES_FILE_PATH, 'utf-8'))
+    : process.env.VCAP_SERVICES && JSON.parse(process.env.VCAP_SERVICES)
+  
+  if (!vcap_services) throw new Error('No VCAP_SERVICES in process environment')
+  
+  for (const name in vcap_services) {
+    const srv = vcap_services[name][0]
     if (test(srv)) return srv.credentials
   }
 }
