@@ -371,7 +371,6 @@ describe('simple unit tests', () => {
       })
 
       test('fetches all subscription pages', async () => {
-        // TODO: Review AI Test
         const topics = await messaging._getSubscriptionsM()
 
         expect(topics).toEqual([
